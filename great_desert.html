@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Интерактивная карта Stellar Blade — Великая пустыня (Great Desert).">
+<link rel="icon" type="image/png" href="avatar-favicon.png">
+<title>Интерактивная карта Stellar Blade — Великая пустыня (Great Desert)</title>
+<style>
+* { box-sizing:border-box; }
+body {
+    min-height:100vh; margin:0; padding:24px;
+    display:grid; place-items:center;
+    background:radial-gradient(circle at center, #1e2638 0%, #0f131d 100%);
+    color:#e0e6ed; font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;
+}
+main { width:min(100%, 560px); text-align:center; }
+.eyebrow { margin:0 0 12px; color:#50e3c2; font-size:12px; font-weight:700; text-transform:uppercase; }
+h1 { margin:0; color:#fff; font-size:clamp(25px, 6vw, 36px); line-height:1.2; }
+.status { margin:18px 0 26px; color:#aab5c5; line-height:1.6; }
+.actions { display:flex; justify-content:center; flex-wrap:wrap; gap:10px; }
+.button {
+    display:inline-flex; min-height:44px; align-items:center; justify-content:center;
+    padding:10px 16px; border:1px solid #384152; border-radius:7px;
+    background:#252b37; color:#fff; font-size:13px; font-weight:700;
+    text-decoration:none; transition:filter .15s, transform .15s;
+}
+.button:hover { filter:brightness(1.15); transform:translateY(-1px); }
+.button.donate { border-color:#ef6672; background:#d94350; }
+</style>
+</head>
+<body>
+<main>
+    <p class="eyebrow">Stellar Blade</p>
+    <h1>Великая пустыня<br>(Great Desert)</h1>
+    <p class="status">Интерактивная карта и база меток для этой локации пока не добавлены.</p>
+    <nav class="actions" aria-label="Навигация">
+        <a class="button" href="index.html">← На главную</a>
+        <a class="button donate" href="https://www.donationalerts.com/r/broskiplay" target="_blank" rel="noopener noreferrer">☕ DONATE</a>
+    </nav>
+</main>
+</body>
+</html>
