@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Интерактивная карта Stellar Blade by BroskiPlay — Ксион</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+@font-face {
+    font-family: 'icomoon';
+    src: url('icons.woff?v=1') format('woff'), url('icons.ttf?v=1') format('truetype');
+    font-weight: normal; font-style: normal; font-display: block;
+}
+[class^="icon-"], [class*=" icon-"] {
+    font-family: 'icomoon' !important; speak: never; font-style: normal; font-weight: normal;
+    font-variant: normal; text-transform: none; line-height: 1;
+    -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+}
+.icon-adams_clothes:before { content: "\e900"; color:#fff; }
+.icon-beta_core:before { content: "\e901"; color:#fff; }
+.icon-body_core:before { content: "\e902"; color:#fff; }
+.icon-boss:before { content: "\e903"; color:#fff; }
+.icon-box:before { content: "\e904"; color:#fff; }
+.icon-bulletin_board:before { content: "\e905"; color:#fff; }
+.icon-bulletin_board_request:before { content: "\e906"; color:#fff; }
+.icon-camp:before { content: "\e907"; color:#fff; }
+.icon-can:before { content: "\e908"; color:#fff; }
+.icon-data_bank:before { content: "\e909"; color:#fff; }
+.icon-drone_appearance:before { content: "\e90a"; color:#fff; }
+.icon-drone_upgrade_module:before { content: "\e90b"; color:#fff; }
+.icon-earrings:before { content: "\e90c"; color:#fff; }
+.icon-easter_egg:before { content: "\e90d"; color:#fff; }
+.icon-exospine:before { content: "\e90e"; color:#fff; }
+.icon-face_decoration:before { content: "\e90f"; color:#fff; }
+.icon-fast_travel:before { content: "\e910"; color:#fff; }
+.icon-fish:before { content: "\e911"; color:#fff; }
+.icon-gear:before { content: "\e912"; color:#fff; }
+.icon-hairstyle:before { content: "\e913"; color:#fff; }
+.icon-lilys_clothes:before { content: "\e914"; color:#fff; }
+.icon-lost_song:before { content: "\e915"; color:#fff; }
+.icon-main_quest:before { content: "\e916"; color:#fff; }
+.icon-memory_stick:before { content: "\e917"; color:#fff; }
+.icon-miscellaneous:before { content: "\e918"; color:#fff; }
+.icon-mission_item:before { content: "\e919"; color:#fff; }
+.icon-nano_suit:before { content: "\e91a"; color:#fff; }
+.icon-naytiba:before { content: "\e91b"; color:#fff; }
+.icon-omnibolt:before { content: "\e91c"; color:#fff; }
+.icon-passcode:before { content: "\e91d"; color:#fff; }
+.icon-photo_spot:before { content: "\e91e"; color:#fff; }
+.icon-point_of_interest:before { content: "\e91f"; color:#fff; }
+.icon-safehouse:before { content: "\e920"; color:#fff; }
+.icon-side_quest:before { content: "\e921"; color:#fff; }
+.icon-stellar_tear:before { content: "\e922"; color:#fff; }
+.icon-transition:before { content: "\e923"; color:#fff; }
+.icon-traversal:before { content: "\e924"; color:#fff; }
+.icon-tumbler_expansion_module:before { content: "\e925"; color:#fff; }
+.icon-vendor:before { content: "\e926"; color:#fff; }
+.icon-weapon_core:before { content: "\e927"; color:#fff; }
+
+.leaflet-control-attribution { display: none !important; }
+
+* { box-sizing:border-box; margin:0; padding:0; font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif; }
+body { display:flex; height:100vh; width:100vw; background:#141923; color:#e0e6ed; overflow:hidden; position:relative; }
+
+.social-links { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+.social-btn {
+    display:inline-flex; align-items:center; gap:7px;
+    padding:6px 11px; border-radius:6px; font-size:12px; font-weight:700;
+    text-decoration:none; color:#fff; transition:transform .15s, filter .15s;
+    border:1px solid rgba(255,255,255,.15);
+}
+.social-btn:hover { transform:translateY(-1px); filter:brightness(1.12); }
+.social-btn svg { width:15px; height:15px; fill:currentColor; flex-shrink:0; }
+.social-twitch { background:#6441a5; border-color:#7d5bbe; }
+.social-youtube { background:#c4302b; border-color:#e0443e; }
+
+#sidebar {
+    width:360px; min-width:360px; height:100vh; background:#1a1e26;
+    border-right:1px solid #2e3543; display:flex; flex-direction:column;
+    z-index:1000; box-shadow:2px 0 10px rgba(0,0,0,.5);
+    transition:margin-left .3s ease; position:relative;
+}
+#sidebar.collapsed { margin-left:-360px; }
+
+#sidebar-toggle-btn {
+    position:fixed; top:14px; left:360px; z-index:1100;
+    width:34px; height:42px; background:#1a1e26; color:#50e3c2;
+    border:1px solid #2e3543; border-left:none; border-radius:0 8px 8px 0;
+    cursor:pointer; display:flex; align-items:center; justify-content:center;
+    font-size:15px; font-weight:bold; box-shadow:3px 2px 8px rgba(0,0,0,.45);
+    transition:left .3s ease, background .2s;
+}
+#sidebar-toggle-btn:hover { background:#252b37; }
+#sidebar.collapsed + #sidebar-toggle-btn { left:0; }
+
+.sidebar-header { padding:14px 16px; background:linear-gradient(135deg,#232a38,#161922); border-bottom:1px solid #2e3543; }
+.header-top-row { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; margin-bottom:10px; }
+.sidebar-header h1 { font-size:15px; color:#50e3c2; line-height:1.3; text-transform:uppercase; letter-spacing:.6px; }
+.home-back-btn {
+    display:inline-flex; align-items:center; text-decoration:none; color:#fff; font-weight:600;
+    padding:5px 9px; border-radius:6px; font-size:11px; background:#252b37; border:1px solid #384152; flex-shrink:0;
+}
+.home-back-btn:hover { background:#3a4659; }
+.autosave-indicator { font-size:10.5px; color:#6c7a89; margin-top:8px; display:flex; align-items:center; justify-content:space-between; }
+
+.section { padding:10px 16px; border-bottom:1px solid #262c36; }
+select, input[type="text"], input[type="number"], textarea, button { width:100%; padding:7px 10px; background:#252b37; border:1px solid #384152; color:#fff; border-radius:6px; font-size:13px; margin-bottom:6px; }
+select:focus, input:focus, textarea:focus { outline:none; border-color:#50e3c2; }
+button { cursor:pointer; font-weight:600; transition:background .2s; background:#2d3646; }
+button:hover { background:#3a4659; }
+button.primary { background:#0088cc; border-color:#0099e6; }
+button.primary:hover { background:#0099e6; }
+button.success { background:#27ae60; border-color:#2ecc71; }
+button.success:hover { background:#2ecc71; }
+button.active-mode { background:#e67e22; border-color:#d35400; color:#fff; }
+.btn-group { display:flex; gap:6px; }
+.btn-group button { margin-bottom:0; padding:6px 8px; font-size:12px; }
+
+details.submenu { background:#151921; border:1px solid #2e3543; border-radius:6px; margin-bottom:6px; overflow:hidden; }
+details.submenu > summary { padding:8px 12px; cursor:pointer; font-weight:600; font-size:12.5px; color:#50e3c2; user-select:none; list-style:none; display:flex; align-items:center; justify-content:space-between; background:#1c222d; }
+details.submenu > summary::-webkit-details-marker { display:none; }
+details.submenu > summary:hover { background:#232a38; }
+details.submenu > summary::after { content:"▼"; font-size:10px; color:#8a99ad; transition:transform .2s; }
+details.submenu[open] > summary::after { transform:rotate(180deg); }
+details.submenu[open] > summary { border-bottom:1px solid #2e3543; }
+.submenu-body { padding:10px; font-size:12px; max-height:330px; overflow-y:auto; }
+
+details.nested-menu { background:#1a1f29; border:1px solid #283040; border-radius:5px; margin-bottom:6px; }
+details.nested-menu > summary { padding:6px 10px; cursor:pointer; font-weight:600; font-size:12px; color:#d0d7e1; user-select:none; list-style:none; display:flex; align-items:center; justify-content:space-between; }
+details.nested-menu > summary::-webkit-details-marker { display:none; }
+details.nested-menu > summary::after { content:"▸"; font-size:11px; color:#8a99ad; transition:transform .2s; }
+details.nested-menu[open] > summary::after { transform:rotate(90deg); }
+.nested-body { padding:8px 10px; border-top:1px solid #283040; }
+
+.calib-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:5px; gap:4px; }
+.calib-row span { flex:1; color:#b0bac9; font-size:12px; }
+.calib-row button { width:auto; padding:3px 9px; margin:0; font-size:11px; }
+.filters-list { flex:1; overflow-y:auto; padding:8px 14px; display:grid; grid-template-columns:1fr; gap:4px; }
+.filter-item { display:flex; align-items:center; justify-content:space-between; padding:5px 9px; background:#232832; border-radius:6px; cursor:pointer; user-select:none; transition:background .15s; font-size:12.5px; }
+.filter-item:hover { background:#2c3340; }
+.filter-item.disabled { opacity:.38; }
+.filter-left { display:flex; align-items:center; gap:9px; overflow:hidden; }
+.filter-left span.cat-label { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.filter-icon-box { width:24px; height:24px; border-radius:50% 50% 50% 0; transform:rotate(-45deg); display:flex; align-items:center; justify-content:center; font-size:12px; flex-shrink:0; border:1px solid rgba(255,255,255,.4); }
+.filter-icon-box span { transform:rotate(45deg); display:inline-block; }
+.badge { background:#161920; padding:2px 7px; border-radius:10px; font-size:11px; color:#8a99ad; flex-shrink:0; }
+#map { flex:1; height:100vh; background:#141923; }
+
+.custom-pin {
+    display:flex; align-items:center; justify-content:center;
+    width:28px; height:28px; border-radius:50% 50% 50% 0;
+    transform:rotate(-45deg); border:1.5px solid rgba(255,255,255,.85);
+    box-shadow:-2px 2px 5px rgba(0,0,0,.75); font-size:14px;
+    transition:transform .15s, opacity .2s, filter .2s, box-shadow .15s;
+}
+.custom-pin span { transform:rotate(45deg); display:inline-block; }
+.custom-pin:hover { transform:rotate(-45deg) scale(1.22); }
+.custom-pin.found { opacity:.32; filter:grayscale(85%); border-color:#666; }
+body.ctrl-pressed .custom-pin { cursor:move !important; box-shadow:0 0 10px #50e3c2; border-color:#50e3c2; }
+
+.leaflet-popup-content-wrapper { background:#1e232d; color:#fff; border:1px solid #384152; border-radius:8px; width:280px; }
+.leaflet-popup-content { margin:12px; width:254px !important; }
+.leaflet-popup-tip { background:#1e232d; }
+.popup-title { font-size:15px; font-weight:bold; margin-bottom:4px; color:#50e3c2; }
+.popup-cat { font-size:11px; color:#8a99ad; text-transform:uppercase; margin-bottom:8px; display:flex; align-items:center; gap:6px; }
+.popup-desc { font-size:12.5px; margin-bottom:10px; line-height:1.4; color:#d0d7e1; }
+.popup-img { width:100%; border-radius:6px; margin-bottom:10px; border:1px solid #384152; cursor:zoom-in; display:block; }
+.popup-actions { display:flex; gap:8px; }
+.popup-actions button { padding:6px 10px; font-size:12px; margin:0; }
+.btn-found { background:#27ae60; border:none; }
+.btn-found:hover { background:#2ecc71; }
+.btn-delete { background:#c0392b; border:none; width:auto; }
+.btn-delete:hover { background:#e74c3c; }
+.panel-label { color:#50e3c2; font-weight:bold; margin-bottom:6px; }
+.panel-note { color:#8a99ad; font-size:11px; line-height:1.35; margin:4px 0 8px; }
+.status-msg { font-size:11px; padding:5px 8px; border-radius:4px; background:#12151c; color:#50e3c2; margin-top:6px; display:none; }
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+    <div class="sidebar-header">
+        <div class="header-top-row">
+            <h1>Интерактивная карта Stellar Blade by BroskiPlay</h1>
+            <a href="index.html" class="home-back-btn" title="Вернуться в главное меню">🏠 Главная</a>
+        </div>
+        <div class="social-links">
+            <a href="https://www.twitch.tv/broski" target="_blank" rel="noopener noreferrer" class="social-btn social-twitch">
+                <svg viewBox="0 0 24 24"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z"/></svg>
+                <span>Twitch</span>
+            </a>
+            <a href="https://youtube.com/@broskiplayt" target="_blank" rel="noopener noreferrer" class="social-btn social-youtube">
+                <svg viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+                <span>YouTube</span>
+            </a>
+        </div>
+        <div class="autosave-indicator">
+            <span>🔄 Автосохранение в кэш: каждые 3 мин.</span>
+            <span id="autosave-time"></span>
+        </div>
+    </div>
+
+    <div class="section">
+        <!-- Быстрый переключатель между отдельными страницами карт -->
+        <select id="page-nav-selector" onchange="window.location.href = this.value">
+            <option value="eidos7.html">🗺 Эйдос 7 (Eidos 7)</option>
+            <option value="xion.html" selected>🗺 Ксион (Xion)</option>
+            <option value="wasteland.html">🗺 Пустошь (Wasteland)</option>
+            <option value="matrix11.html">🗺 Матрица 11 (Matrix 11)</option>
+            <option value="great_desert.html">🗺 Великая пустыня (Great Desert)</option>
+            <option value="spire4.html">🗺 Шпиль 4 (Spire 4)</option>
+            <option value="eidos9.html">🗺 Эйдос 9 (Eidos 9)</option>
+        </select>
+        <input type="text" id="search-input" placeholder="🔍 Поиск по названию или описанию...">
+        <div style="font-size:12px;color:#8a99ad;display:flex;justify-content:space-between;">
+            <span>Собрано на локации:</span>
+            <b id="progress-counter" style="color:#50e3c2;">0 / 0</b>
+        </div>
+    </div>
+
+    <div class="section">
+        <details class="submenu">
+            <summary>⚙️ Настройки и управление метками</summary>
+            <div class="submenu-body">
+                <button id="toggle-add-btn" onclick="toggleAddMode()" style="margin-bottom:6px;">+ Добавить свою метку на карту</button>
+                <div class="panel-note">💡 Зажмите клавишу <b>Ctrl</b> и перетащите любую метку мышью, чтобы вручную настроить её местоположение.</div>
+
+                <details class="nested-menu">
+                    <summary>🔧 Подгонка и масштаб всех меток</summary>
+                    <div class="nested-body">
+                        <div class="calib-row"><span>Сдвиг по X:</span>
+                            <button onclick="shiftAllMarkers(-75,0)">◀◀</button><button onclick="shiftAllMarkers(-15,0)">◀</button>
+                            <button onclick="shiftAllMarkers(15,0)">▶</button><button onclick="shiftAllMarkers(75,0)">▶▶</button>
+                        </div>
+                        <div class="calib-row"><span>Сдвиг по Y:</span>
+                            <button onclick="shiftAllMarkers(0,75)">▲▲</button><button onclick="shiftAllMarkers(0,15)">▲</button>
+                            <button onclick="shiftAllMarkers(0,-15)">▼</button><button onclick="shiftAllMarkers(0,-75)">▼▼</button>
+                        </div>
+                        <div class="calib-row"><span>Ширина (X):</span>
+                            <button onclick="scaleMarkersAxis(0.98,1)">➖ Уже</button><button onclick="scaleMarkersAxis(1.02,1)">➕ Шире</button>
+                        </div>
+                        <div class="calib-row"><span>Высота (Y):</span>
+                            <button onclick="scaleMarkersAxis(1,0.98)">➖ Ниже</button><button onclick="scaleMarkersAxis(1,1.02)">➕ Выше</button>
+                        </div>
+                    </div>
+                </details>
+
+                <details class="nested-menu">
+                    <summary>📌 Управление импортированными метками</summary>
+                    <div class="nested-body">
+                        <label for="shift-step" style="display:block;margin-bottom:4px;color:#b0bac9;">Шаг сдвига (пиксели):</label>
+                        <input type="number" id="shift-step" value="25" min="1" step="1">
+                        <div class="calib-row"><span>По X (влево/вправо):</span>
+                            <button onclick="shiftImported(-1,0)">◀</button>
+                            <button onclick="shiftImported(1,0)">▶</button>
+                        </div>
+                        <div class="calib-row"><span>По Y (вверх/вниз):</span>
+                            <button onclick="shiftImported(0,1)">▲</button>
+                            <button onclick="shiftImported(0,-1)">▼</button>
+                        </div>
+                        <hr style="border-color:#283040;margin:8px 0;">
+                        <button onclick="mirrorImportedX()">⇄ Отразить по X (лево ↔ право)</button>
+                        <button onclick="mirrorImportedY()">⇅ Отразить по Y (верх ↔ низ)</button>
+                        <button onclick="resetImportedTransforms()">↩ Сбросить сдвиги и отражения</button>
+                        <hr style="border-color:#283040;margin:8px 0;">
+                        <button onclick="deleteImportedMarkers()" style="background:#922b21;border-color:#c0392b;">🗑 Удалить импортированные метки</button>
+                    </div>
+                </details>
+
+                <details class="nested-menu">
+                    <summary>🗂 База меток этой карты (JSON)</summary>
+                    <div class="nested-body">
+                        <div class="panel-note">При импорте любые метки из файла автоматически привязываются строго к этой карте!</div>
+                        <div class="btn-group">
+                            <button onclick="exportData()">💾 Сохранить базу как...</button>
+                            <button onclick="document.getElementById('import-file').click()" class="primary">📂 Импорт базы</button>
+                        </div>
+                        <input type="file" id="import-file" style="display:none" accept=".json,application/json">
+                    </div>
+                </details>
+            </div>
+        </details>
+
+        <details class="submenu">
+            <summary>💾 Сохранение выполненных меток</summary>
+            <div class="submenu-body">
+                <div class="panel-label">Сохранение прогресса этой карты:</div>
+                <div class="btn-group" style="margin-bottom:6px;">
+                    <button class="success" onclick="exportFoundProgress()">💾 Сохранить как...</button>
+                    <button class="primary" onclick="document.getElementById('import-found-file').click()">📂 Загрузить</button>
+                </div>
+                <input type="file" id="import-found-file" style="display:none" accept=".json,application/json">
+                <div class="btn-group" style="margin-bottom:6px;">
+                    <button onclick="saveQuickCheckpoint()">📌 Сохранить сейв как...</button>
+                    <button onclick="loadQuickCheckpoint()">🔄 Из кэша</button>
+                </div>
+                <button onclick="resetFoundProgress()" style="background:#5c2828;border-color:#7d3434;font-size:11px;padding:5px;">✖ Сбросить выполненные метки</button>
+                <div id="status-msg" class="status-msg"></div>
+            </div>
+        </details>
+
+        <div class="btn-group">
+            <button onclick="setAllCategories(true)">👁 Показать все</button>
+            <button onclick="setAllCategories(false)">🙈 Скрыть все</button>
+        </div>
+    </div>
+
+    <div class="filters-list" id="filters-container"></div>
+</div>
+
+<button id="sidebar-toggle-btn" onclick="toggleSidebar()" title="Скрыть / показать боковое меню">◀</button>
+<div id="map"></div>
+
+<script>
+// =========================================================================
+// НАСТРОЙКИ ТЕКУЩЕЙ КАРТЫ (ДЛЯ КСИОНА)
+// =========================================================================
+const CURRENT_MAP_CONFIG = {
+    id: "wasteland",                          // Уникальный ID памяти
+    name: "Пустошь (Wasteland)",                // Название
+    htmlFile: "wasteland.html",               // Имя файла
+    image: "maps/wasteland.png",              // Картинка карты
+    altImages: ["wasteland.png", "maps/wasteland.jpg"],
+    width: 7159,                         // Ширина по умолчанию
+    height: 8937                         // Высота по умолчанию
+};
+
+// Изолированные ключи памяти для Ксиона
+const STORAGE_KEY_MARKERS    = `sb_markers_${CURRENT_MAP_CONFIG.id}`;
+const STORAGE_KEY_FOUND      = `sb_found_${CURRENT_MAP_CONFIG.id}`;
+const STORAGE_KEY_CHECKPOINT = `sb_checkpoint_${CURRENT_MAP_CONFIG.id}`;
+
+const CATEGORIES = {
+    camp:{name:"Лагерь (Camp)",iconClass:"icon-camp",color:"#27ae60"},
+    fast_travel:{name:"Быстрое перемещение",iconClass:"icon-fast_travel",color:"#2ecc71"},
+    safehouse:{name:"Убежище (Safehouse)",iconClass:"icon-safehouse",color:"#16a085"},
+    can:{name:"Банка (Can)",iconClass:"icon-can",color:"#e74c3c"},
+    nano_suit:{name:"Нанокостюм (Nano Suit)",iconClass:"icon-nano_suit",color:"#9b59b6"},
+    exospine:{name:"Экзохребет (Exospine)",iconClass:"icon-exospine",color:"#d35400"},
+    gear:{name:"Модуль (Gear)",iconClass:"icon-gear",color:"#e67e22"},
+    body_core:{name:"Ядро тела (Body Core)",iconClass:"icon-body_core",color:"#2980b9"},
+    beta_core:{name:"Бета-ядро (Beta Core)",iconClass:"icon-beta_core",color:"#3498db"},
+    weapon_core:{name:"Ядро оружия (Weapon Core)",iconClass:"icon-weapon_core",color:"#c0392b"},
+    tumbler_expansion_module:{name:"Расширение фляги (Tumbler)",iconClass:"icon-tumbler_expansion_module",color:"#1abc9c"},
+    drone_upgrade_module:{name:"Модуль улучшения дрона",iconClass:"icon-drone_upgrade_module",color:"#00cec9"},
+    omnibolt:{name:"Омниболт (Omnibolt)",iconClass:"icon-omnibolt",color:"#f39c12"},
+    box:{name:"Ящик / Сундук (Box)",iconClass:"icon-box",color:"#d68910"},
+    passcode:{name:"Пароль / Код (Passcode)",iconClass:"icon-passcode",color:"#f1c40f"},
+    memory_stick:{name:"Флешка (Memory Stick)",iconClass:"icon-memory_stick",color:"#546de5"},
+    data_bank:{name:"Банк данных (Data Bank)",iconClass:"icon-data_bank",color:"#546de5"},
+    lost_song:{name:"Забытая песня (Lost Song)",iconClass:"icon-lost_song",color:"#e056fd"},
+    boss:{name:"Босс (Boss)",iconClass:"icon-boss",color:"#b71540"},
+    naytiba:{name:"Элитный Найтиба (Naytiba)",iconClass:"icon-naytiba",color:"#eb2f06"},
+    main_quest:{name:"Сюжетное задание",iconClass:"icon-main_quest",color:"#f6b93b"},
+    side_quest:{name:"Побочное задание",iconClass:"icon-side_quest",color:"#4a69bd"},
+    bulletin_board:{name:"Доска объявлений",iconClass:"icon-bulletin_board",color:"#60a3bc"},
+    bulletin_board_request:{name:"Запрос с доски",iconClass:"icon-bulletin_board_request",color:"#3c6382"},
+    mission_item:{name:"Квестовый предмет",iconClass:"icon-mission_item",color:"#fa983a"},
+    vendor:{name:"Торговец (Vendor)",iconClass:"icon-vendor",color:"#78e08f"},
+    fish:{name:"Рыбалка (Fish)",iconClass:"icon-fish",color:"#0a3d62"},
+    stellar_tear:{name:"Звездная слеза (Stellar Tear)",iconClass:"icon-stellar_tear",color:"#686de0"},
+    photo_spot:{name:"Фото-точка (Photo Spot)",iconClass:"icon-photo_spot",color:"#ff7979"},
+    earrings:{name:"Серьги (Earrings)",iconClass:"icon-earrings",color:"#badc58"},
+    face_decoration:{name:"Украшение лица",iconClass:"icon-face_decoration",color:"#f9ca24"},
+    hairstyle:{name:"Прическа (Hairstyle)",iconClass:"icon-hairstyle",color:"#f0932b"},
+    adams_clothes:{name:"Одежда Адама",iconClass:"icon-adams_clothes",color:"#95afc0"},
+    lilys_clothes:{name:"Одежда Лили",iconClass:"icon-lilys_clothes",color:"#ffbe76"},
+    drone_appearance:{name:"Облик дрона",iconClass:"icon-drone_appearance",color:"#7ed6df"},
+    point_of_interest:{name:"Точка интереса (POI)",iconClass:"icon-point_of_interest",color:"#636e72"},
+    transition:{name:"Переход между зонами",iconClass:"icon-transition",color:"#2d3436"},
+    traversal:{name:"Препятствие / Путь",iconClass:"icon-traversal",color:"#718093"},
+    easter_egg:{name:"Пасхалка (Easter Egg)",iconClass:"icon-easter_egg",color:"#8c7ae6"},
+    miscellaneous:{name:"Разное (Misc)",iconClass:"icon-miscellaneous",color:"#576574"}
+};
+
+let addMode = false;
+let mapInstance = null;
+let imageOverlay = null;
+const markersLayer = L.layerGroup();
+let markersData = loadJSON(STORAGE_KEY_MARKERS, []);
+let foundIds = loadJSON(STORAGE_KEY_FOUND, []);
+let activeCategories = Object.keys(CATEGORIES).reduce((acc,key)=>({...acc,[key]:true}),{});
+
+function loadJSON(key, fallback) {
+    try {
+        const parsed = JSON.parse(localStorage.getItem(key));
+        return parsed ?? fallback;
+    } catch (_) {
+        return fallback;
+    }
+}
+
+function toggleSidebar() {
+    const sidebar = document.getElementById("sidebar");
+    const btn = document.getElementById("sidebar-toggle-btn");
+    const isCollapsed = sidebar.classList.toggle("collapsed");
+    btn.textContent = isCollapsed ? "▶" : "◀";
+    setTimeout(() => {
+        if (mapInstance) mapInstance.invalidateSize();
+    }, 320);
+}
+
+window.addEventListener("keydown", e => {
+    if (e.key === "Control") document.body.classList.add("ctrl-pressed");
+});
+window.addEventListener("keyup", e => {
+    if (e.key === "Control") document.body.classList.remove("ctrl-pressed");
+});
+window.addEventListener("blur", () => document.body.classList.remove("ctrl-pressed"));
+
+function initMap() {
+    document.getElementById("page-nav-selector").value = CURRENT_MAP_CONFIG.htmlFile;
+
+    mapInstance = L.map("map", {
+        crs: L.CRS.Simple,
+        minZoom: -5,
+        maxZoom: 4,
+        zoomSnap: 0.25,
+        attributionControl: false
+    });
+    markersLayer.addTo(mapInstance);
+    mapInstance.on("click", function(e) {
+        if (addMode) openCreateMarkerPopup(e.latlng.lat,e.latlng.lng);
+    });
+    loadCurrentMapImage();
+
+    setInterval(autoSaveToBrowserCache, 3 * 60 * 1000);
+}
+
+function autoSaveToBrowserCache() {
+    localStorage.setItem(STORAGE_KEY_MARKERS, JSON.stringify(markersData));
+    localStorage.setItem(STORAGE_KEY_FOUND, JSON.stringify(foundIds));
+    const timeStr = new Date().toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+    const indicator = document.getElementById("autosave-time");
+    if (indicator) indicator.textContent = `(${timeStr})`;
+}
+
+function createFallbackGridUrl(width,height) {
+    const canvas=document.createElement("canvas");
+    canvas.width=1024; canvas.height=Math.round(1024 * (height / width));
+    const ctx=canvas.getContext("2d");
+    ctx.fillStyle="#141923"; ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.strokeStyle="#1e2636"; ctx.lineWidth=2;
+    for(let x=0;x<=canvas.width;x+=64){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,canvas.height);ctx.stroke();}
+    for(let y=0;y<=canvas.height;y+=64){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(canvas.width,y);ctx.stroke();}
+    ctx.fillStyle="#50e3c2";ctx.font="bold 22px sans-serif";ctx.textAlign="center";
+    ctx.fillText(`Положите файл "${CURRENT_MAP_CONFIG.image}" в папку`,canvas.width/2,canvas.height/2);
+    return canvas.toDataURL();
+}
+
+function loadCurrentMapImage() {
+    const cfg = CURRENT_MAP_CONFIG;
+    if (imageOverlay) mapInstance.removeLayer(imageOverlay);
+
+    const candidates = [cfg.image, ...(cfg.altImages || [])];
+    let tryIndex = 0;
+
+    function tryNextImage() {
+        if (tryIndex >= candidates.length) {
+            const bounds = [[0, 0], [cfg.height, cfg.width]];
+            imageOverlay = L.imageOverlay(createFallbackGridUrl(cfg.width, cfg.height), bounds).addTo(mapInstance);
+            mapInstance.fitBounds(bounds);
+            renderMarkers();
+            return;
+        }
+        const candidateSrc = candidates[tryIndex++];
+        const img = new Image();
+        img.onload = function() {
+            if (this.naturalWidth && this.naturalHeight) {
+                cfg.width = this.naturalWidth;
+                cfg.height = this.naturalHeight;
+            }
+            const bounds = [[0, 0], [cfg.height, cfg.width]];
+            imageOverlay = L.imageOverlay(candidateSrc, bounds).addTo(mapInstance);
+            mapInstance.fitBounds(bounds);
+            renderMarkers();
+        };
+        img.onerror = tryNextImage;
+        img.src = candidateSrc;
+    }
+
+    tryNextImage();
+    renderFilters();
+}
+
+function renderMarkers() {
+    markersLayer.clearLayers();
+    const query=document.getElementById("search-input").value.toLowerCase().trim();
+    let foundCount=0;
+
+    markersData.forEach(marker=>{
+        const isFound=foundIds.includes(marker.id);
+        if(isFound) foundCount++;
+        if(!activeCategories[marker.category]) return;
+        if(query && !(marker.title||"").toLowerCase().includes(query) && !(marker.desc||"").toLowerCase().includes(query)) return;
+
+        const cat=CATEGORIES[marker.category]||CATEGORIES.miscellaneous;
+        const iconHtml=`<div class="custom-pin ${isFound?"found":""}" style="background-color:${cat.color};"><span class="${cat.iconClass}"></span></div>`;
+        const customIcon=L.divIcon({html:iconHtml,className:"",iconSize:[28,28],iconAnchor:[14,28],popupAnchor:[0,-28]});
+        const lMarker=L.marker([marker.lat,marker.lng],{icon:customIcon});
+
+        const imgHtml=marker.img
+            ? `<img src="${escapeAttr(marker.img)}" class="popup-img" onclick="window.open(this.src,'_blank')" title="Открыть изображение в полном размере">`
+            : "";
+        const popupHtml=`<div>
+            <div class="popup-cat"><span class="${cat.iconClass}"></span> ${escapeHtml(cat.name)}</div>
+            <div class="popup-title">${escapeHtml(marker.title||cat.name)}</div>
+            ${marker.desc?`<div class="popup-desc">${escapeHtml(marker.desc)}</div>`:""}
+            ${imgHtml}
+            <div class="popup-actions">
+                <button class="btn-found" onclick="toggleFound(${JSON.stringify(marker.id)})">${isFound?"✖ Снять отметку":"✔ Найдено!"}</button>
+                <button class="btn-delete" onclick="deleteMarker(${JSON.stringify(marker.id)})" title="Удалить метку">🗑</button>
+            </div>
+        </div>`;
+
+        lMarker.bindPopup(popupHtml);
+
+        lMarker.on("contextmenu", function(e) {
+            if (e.originalEvent) e.originalEvent.preventDefault();
+            toggleFound(marker.id);
+        });
+
+        lMarker.on("mousedown", function(e) {
+            const orig = e.originalEvent;
+            if (!orig || !orig.ctrlKey || orig.button !== 0) return;
+
+            L.DomEvent.stopPropagation(e);
+            L.DomEvent.preventDefault(e);
+            lMarker.closePopup();
+            mapInstance.dragging.disable();
+
+            function onMouseMove(moveEvent) {
+                lMarker.setLatLng(moveEvent.latlng);
+            }
+
+            function onMouseUp() {
+                mapInstance.off("mousemove", onMouseMove);
+                window.removeEventListener("mouseup", onMouseUp);
+                mapInstance.dragging.enable();
+
+                const newPos = lMarker.getLatLng();
+                marker.lat = Number(newPos.lat.toFixed(2));
+                marker.lng = Number(newPos.lng.toFixed(2));
+                saveMarkers();
+                showStatus(`✅ Позиция метки «${marker.title}» обновлена!`);
+            }
+
+            mapInstance.on("mousemove", onMouseMove);
+            window.addEventListener("mouseup", onMouseUp);
+        });
+
+        markersLayer.addLayer(lMarker);
+    });
+    document.getElementById("progress-counter").textContent=`${foundCount} / ${markersData.length}`;
+}
+
+function escapeHtml(value) {
+    return String(value).replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
+}
+function escapeAttr(value) { return escapeHtml(value); }
+
+function renderFilters() {
+    const container=document.getElementById("filters-container");
+    container.innerHTML="";
+    Object.keys(CATEGORIES).forEach(catKey=>{
+        const cat=CATEGORIES[catKey];
+        const inCat=markersData.filter(m=>m.category===catKey);
+        if(!inCat.length) return;
+        const foundCount=inCat.filter(m=>foundIds.includes(m.id)).length;
+        const isActive=activeCategories[catKey];
+        const div=document.createElement("div");
+        div.className=`filter-item ${isActive?"":"disabled"}`;
+        div.onclick=()=>toggleCategory(catKey,!activeCategories[catKey]);
+        div.innerHTML=`<div class="filter-left"><div class="filter-icon-box" style="background-color:${cat.color};"><span class="${cat.iconClass}"></span></div><span class="cat-label" title="${escapeAttr(cat.name)}">${escapeHtml(cat.name)}</span></div><span class="badge">${foundCount}/${inCat.length}</span>`;
+        container.appendChild(div);
+    });
+}
+
+function shiftAllMarkers(dx,dy) {
+    markersData.forEach(m=>{
+        m.lng=Number((m.lng+dx).toFixed(2));
+        m.lat=Number((m.lat+dy).toFixed(2));
+    });
+    saveMarkers();renderMarkers();
+}
+
+function scaleMarkersAxis(factorX,factorY) {
+    if(!markersData.length) return;
+    const minLat=Math.min(...markersData.map(m=>m.lat));
+    const minLng=Math.min(...markersData.map(m=>m.lng));
+    markersData.forEach(m=>{
+        m.lat=Number((minLat+(m.lat-minLat)*factorY).toFixed(2));
+        m.lng=Number((minLng+(m.lng-minLng)*factorX).toFixed(2));
+    });
+    saveMarkers();renderMarkers();
+}
+
+function toggleCategory(key,state) {
+    activeCategories[key]=state;renderMarkers();renderFilters();
+}
+function setAllCategories(state) {
+    Object.keys(CATEGORIES).forEach(k=>activeCategories[k]=state);
+    renderMarkers();renderFilters();
+}
+function toggleFound(id) {
+    if(foundIds.includes(id)) foundIds=foundIds.filter(x=>x!==id);
+    else foundIds.push(id);
+    localStorage.setItem(STORAGE_KEY_FOUND,JSON.stringify(foundIds));
+    renderMarkers();renderFilters();
+}
+function deleteMarker(id) {
+    if(!confirm("Удалить эту метку?")) return;
+    markersData=markersData.filter(m=>m.id!==id);
+    foundIds=foundIds.filter(x=>x!==id);
+    saveMarkers();localStorage.setItem(STORAGE_KEY_FOUND,JSON.stringify(foundIds));
+    renderMarkers();renderFilters();
+}
+function toggleAddMode() {
+    addMode=!addMode;
+    const btn=document.getElementById("toggle-add-btn");
+    if(addMode){btn.classList.add("active-mode");btn.textContent="🎯 Кликните на карту для добавления";document.getElementById("map").style.cursor="crosshair";}
+    else{btn.classList.remove("active-mode");btn.textContent="+ Добавить свою метку на карту";document.getElementById("map").style.cursor="grab";}
+}
+function openCreateMarkerPopup(lat,lng) {
+    const options=Object.keys(CATEGORIES).map(k=>`<option value="${k}">${escapeHtml(CATEGORIES[k].name)}</option>`).join("");
+    const html=`<div><div class="popup-title" style="margin-bottom:8px;">Добавить метку</div>
+        <select id="new-cat">${options}</select>
+        <input type="text" id="new-title" placeholder="Название предмета">
+        <textarea id="new-desc" rows="2" placeholder="Описание..."></textarea>
+        <button class="primary" onclick="saveNewMarker(${lat},${lng})">Сохранить</button></div>`;
+    L.popup().setLatLng([lat,lng]).setContent(html).openOn(mapInstance);
+}
+function saveNewMarker(lat,lng) {
+    const category=document.getElementById("new-cat").value;
+    const title=document.getElementById("new-title").value.trim()||CATEGORIES[category].name;
+    const desc=document.getElementById("new-desc").value.trim();
+    markersData.push({id:makeUniqueId(),map:CURRENT_MAP_CONFIG.id,lat:Number(lat.toFixed(2)),lng:Number(lng.toFixed(2)),category,title,desc,imported:false});
+    saveMarkers();mapInstance.closePopup();renderMarkers();renderFilters();
+}
+function makeUniqueId() {
+    if(window.crypto && crypto.randomUUID) return crypto.randomUUID();
+    return Date.now()+Math.random();
+}
+function saveMarkers() {
+    localStorage.setItem(STORAGE_KEY_MARKERS,JSON.stringify(markersData));
+}
+
+async function saveJsonWithDialog(dataObj, suggestedName) {
+    const jsonString = JSON.stringify(dataObj, null, 2);
+    if (window.showSaveFilePicker) {
+        try {
+            const handle = await window.showSaveFilePicker({
+                suggestedName: suggestedName,
+                types: [{ description: "JSON файл сохранения", accept: { "application/json": [".json"] } }]
+            });
+            const writable = await handle.createWritable();
+            await writable.write(jsonString);
+            await writable.close();
+            showStatus(`✅ Файл «${handle.name}» сохранен!`);
+            return;
+        } catch (err) {
+            if (err.name === "AbortError") return;
+        }
+    }
+    const customName = prompt("Введите имя файла для сохранения:", suggestedName);
+    if (!customName) return;
+    const finalName = customName.endsWith(".json") ? customName : customName + ".json";
+    const blob = new Blob([jsonString], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = finalName; a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function exportData() {
+    saveJsonWithDialog({markers:markersData,found:foundIds}, `stellar_blade_${CURRENT_MAP_CONFIG.id}_data.json`);
+}
+
+// ПРИНУДИТЕЛЬНЫЙ ИМПОРТ ТОЛЬКО ДЛЯ ЭТОЙ КАРТЫ:
+function importData(event) {
+    const file=event.target.files && event.target.files[0];
+    if(!file) return;
+    const reader=new FileReader();
+    reader.onload=function(e){
+        try {
+            const imported=JSON.parse(e.target.result);
+            const rawList = Array.isArray(imported) ? imported : imported.markers;
+            if(!Array.isArray(rawList)) throw new Error("В JSON нет массива меток (markers).");
+
+            let validMarkers=rawList.map((m,index)=>{
+                if(!m || typeof m!=="object" || !Number.isFinite(Number(m.lat)) || !Number.isFinite(Number(m.lng))) {
+                    throw new Error(`Некорректные координаты у метки ${index+1}.`);
+                }
+                return {
+                    ...m,
+                    id:m.id ?? makeUniqueId(),
+                    // СТРОГО закрепляем за текущей картой (никакого переноса в другие файлы!)
+                    map:CURRENT_MAP_CONFIG.id,
+                    lat:Number(m.lat),
+                    lng:Number(m.lng),
+                    category:CATEGORIES[m.category]?m.category:"miscellaneous",
+                    title:String(m.title||CATEGORIES[m.category]?.name||"Импортированная метка"),
+                    desc:String(m.desc||""),
+                    imported:true,
+                    _importBaseLat:Number(m.lat),
+                    _importBaseLng:Number(m.lng)
+                };
+            });
+
+            // Автоматическое масштабирование маленьких координат под большой размер карты
+            const maxLat = Math.max(...validMarkers.map(m => m.lat));
+            const maxLng = Math.max(...validMarkers.map(m => m.lng));
+            const cfg = CURRENT_MAP_CONFIG;
+            if (cfg.width > 1800 && maxLat <= 1500 && maxLng <= 1500) {
+                const scaleX = cfg.width / 1024;
+                const scaleY = cfg.height / 1024;
+                validMarkers.forEach(m => {
+                    m.lat = Number((m.lat * scaleY).toFixed(2));
+                    m.lng = Number((m.lng * scaleX).toFixed(2));
+                    m._importBaseLat = m.lat;
+                    m._importBaseLng = m.lng;
+                });
+            }
+
+            markersData = markersData.filter(m => !m.imported).concat(validMarkers);
+            if(Array.isArray(imported.found)) foundIds = Array.from(new Set([...foundIds, ...imported.found]));
+            saveMarkers();
+            localStorage.setItem(STORAGE_KEY_FOUND, JSON.stringify(foundIds));
+            renderMarkers();renderFilters();
+            alert(`Успешно импортировано меток на карту «${CURRENT_MAP_CONFIG.name}»: ${validMarkers.length}!`);
+        } catch(err) {
+            alert("Ошибка чтения JSON: "+(err.message||"неверный формат файла"));
+        } finally {
+            event.target.value="";
+        }
+    };
+    reader.readAsText(file);
+}
+
+function buildProgressPayload() {
+    return {
+        app: "stellar_blade_map_progress",
+        map: CURRENT_MAP_CONFIG.id,
+        updatedAt: new Date().toISOString(),
+        foundCount: foundIds.length,
+        found: foundIds
+    };
+}
+
+function exportFoundProgress() {
+    saveJsonWithDialog(buildProgressPayload(), `stellar_blade_${CURRENT_MAP_CONFIG.id}_progress.json`);
+}
+
+function importFoundProgress(event) {
+    const file = event.target.files && event.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const data = JSON.parse(e.target.result);
+            const list = Array.isArray(data) ? data : (Array.isArray(data.found) ? data.found : null);
+            if(!list) throw new Error("Файл не содержит список выполненных меток (found).");
+            foundIds = Array.from(new Set([...foundIds, ...list]));
+            localStorage.setItem(STORAGE_KEY_FOUND, JSON.stringify(foundIds));
+            renderMarkers();renderFilters();
+            alert(`Прогресс загружен! Всего отмечено: ${foundIds.length}.`);
+        } catch(err) {
+            alert("Ошибка загрузки прогресса: " + (err.message || "неверный файл"));
+        } finally {
+            event.target.value = "";
+        }
+    };
+    reader.readAsText(file);
+}
+
+function showStatus(text) {
+    const el = document.getElementById("status-msg");
+    if (!el) return;
+    el.style.display = "block";
+    el.textContent = text;
+}
+
+function saveQuickCheckpoint() {
+    const payload = buildProgressPayload();
+    localStorage.setItem(STORAGE_KEY_CHECKPOINT, JSON.stringify(payload));
+    saveJsonWithDialog(payload, `stellar_blade_${CURRENT_MAP_CONFIG.id}_checkpoint.json`);
+}
+
+function loadQuickCheckpoint() {
+    const raw = localStorage.getItem(STORAGE_KEY_CHECKPOINT);
+    if(!raw) { alert("Быстрый сейв в кэше для этой карты пока не создан."); return; }
+    try {
+        const data = JSON.parse(raw);
+        if(Array.isArray(data.found)) {
+            foundIds = data.found;
+            localStorage.setItem(STORAGE_KEY_FOUND, JSON.stringify(foundIds));
+            renderMarkers();renderFilters();
+            showStatus(`✅ Восстановлено выполненных меток: ${foundIds.length}`);
+        }
+    } catch(_) {
+        alert("Ошибка чтения быстрого сейва.");
+    }
+}
+
+function resetFoundProgress() {
+    if(!confirm("Сбросить все отметки выполненных меток на этой карте?")) return;
+    foundIds = [];
+    localStorage.setItem(STORAGE_KEY_FOUND, JSON.stringify(foundIds));
+    renderMarkers();renderFilters();
+}
+
+function getShiftStep() {
+    const value=Number(document.getElementById("shift-step").value);
+    if(!Number.isFinite(value)||value<=0){alert("Шаг сдвига должен быть больше нуля.");return null;}
+    return value;
+}
+function shiftImported(dx,dy) {
+    const step=getShiftStep();if(step===null)return;
+    const list=markersData.filter(m=>m.imported);
+    if(!list.length){alert("На этой локации нет импортированных меток.");return;}
+    list.forEach(m=>{
+        m.lng=Number((m.lng+dx*step).toFixed(2));
+        m.lat=Number((m.lat+dy*step).toFixed(2));
+    });
+    saveMarkers();renderMarkers();
+}
+function mirrorImportedX() {
+    const cfg=CURRENT_MAP_CONFIG;
+    const list=markersData.filter(m=>m.imported);
+    if(!list.length){alert("Нет импортированных меток для отражения.");return;}
+    list.forEach(m=>m.lng=Number((cfg.width-m.lng).toFixed(2)));
+    saveMarkers();renderMarkers();
+}
+function mirrorImportedY() {
+    const cfg=CURRENT_MAP_CONFIG;
+    const list=markersData.filter(m=>m.imported);
+    if(!list.length){alert("Нет импортированных меток для отражения.");return;}
+    list.forEach(m=>m.lat=Number((cfg.height-m.lat).toFixed(2)));
+    saveMarkers();renderMarkers();
+}
+function resetImportedTransforms() {
+    const list=markersData.filter(m=>m.imported && Number.isFinite(m._importBaseLat) && Number.isFinite(m._importBaseLng));
+    if(!list.length){alert("Нет исходных координат для сброса.");return;}
+    list.forEach(m=>{m.lat=m._importBaseLat;m.lng=m._importBaseLng;});
+    saveMarkers();renderMarkers();
+}
+function deleteImportedMarkers() {
+    const list=markersData.filter(m=>m.imported);
+    if(!list.length){alert("На этой локации нет импортированных меток.");return;}
+    if(!confirm(`Удалить ${list.length} импортированных меток с этой карты?`))return;
+    const ids=new Set(list.map(m=>m.id));
+    markersData=markersData.filter(m=>!m.imported);
+    foundIds=foundIds.filter(id=>!ids.has(id));
+    saveMarkers();localStorage.setItem(STORAGE_KEY_FOUND,JSON.stringify(foundIds));
+    renderMarkers();renderFilters();
+}
+
+document.getElementById("search-input").addEventListener("input",renderMarkers);
+document.getElementById("import-file").addEventListener("change",importData);
+document.getElementById("import-found-file").addEventListener("change",importFoundProgress);
+window.onload=initMap;
+</script>
+</body>
+</html>
