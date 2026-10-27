@@ -113,6 +113,8 @@ body { display:flex; height:100vh; width:100vw; background:#141923; color:#e0e6e
 .auth-mini-text { font-size:11px; color:#8a99ad; line-height:1.25; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .auth-mini-text b { color:#e0e6ed; }
 .auth-mini-btn { width:auto !important; margin:0 !important; padding:5px 9px !important; font-size:11px !important; flex-shrink:0; }
+.cloud-sync-btn { margin:6px 0 0; padding:5px 8px; font-size:11px; }
+.cloud-sync-status { color:#8a99ad; font-size:11px; line-height:1.35; margin-top:5px; }
 
 .section { padding:10px 16px; border-bottom:1px solid #262c36; }
 select, input[type="text"], input[type="number"], textarea, button { width:100%; padding:7px 10px; background:#252b37; border:1px solid #384152; color:#fff; border-radius:6px; font-size:13px; margin-bottom:6px; }
@@ -212,6 +214,8 @@ body.ctrl-pressed .custom-pin { cursor:move !important; box-shadow:0 0 10px #50e
             </div>
             <button id="auth-btn" class="primary auth-mini-btn" onclick="toggleGoogleAuth()">🔑 Google</button>
         </div>
+        <button id="cloud-sync-btn" class="cloud-sync-btn" onclick="syncProgressToCloud()">☁️ Синхронизировать прогресс</button>
+        <div id="cloud-sync-status" class="cloud-sync-status" aria-live="polite"></div>
         <div class="autosave-indicator">
             <span>🔄 Автосохранение: локально + облако</span>
             <span id="autosave-time"></span>
@@ -438,9 +442,20 @@ function sanitizeMarkersList(list) {
         }));
 }
 
+function normalizeFoundIds(ids) {
+    const markerIds = new Map(markersData.map(marker => [String(marker.id), marker.id]));
+    return Array.from(new Set(ids.map(id => markerIds.get(String(id)) ?? id)));
+}
+
+function setCloudSyncStatus(text) {
+    const status = document.getElementById("cloud-sync-status");
+    if (status) status.textContent = text;
+}
+
 async function loadPreboundMarkers() {
     if (Array.isArray(EMBEDDED_MARKERS) && EMBEDDED_MARKERS.length > 0) {
         markersData = sanitizeMarkersList(EMBEDDED_MARKERS);
+        foundIds = normalizeFoundIds(foundIds);
         saveMarkers();
         renderMarkers();
         renderFilters();
@@ -467,6 +482,7 @@ async function loadPreboundMarkers() {
                         const cached = loadJSON(STORAGE_KEY_MARKERS, []);
                         const customUserMarkers = Array.isArray(cached) ? cached.filter(marker => marker && marker.imported === false) : [];
                         markersData = fileMarkers.concat(customUserMarkers);
+                        foundIds = normalizeFoundIds(foundIds);
                         saveMarkers();
                         renderMarkers();
                         renderFilters();
@@ -484,6 +500,7 @@ async function loadPreboundMarkers() {
     const cached = loadJSON(STORAGE_KEY_MARKERS, []);
     if (Array.isArray(cached) && cached.length > 0) {
         markersData = sanitizeMarkersList(cached);
+        foundIds = normalizeFoundIds(foundIds);
         renderMarkers();
         renderFilters();
     }
@@ -537,6 +554,30 @@ function saveProgressToCloud() {
     }
 }
 
+async function syncProgressToCloud() {
+    const button = document.getElementById("cloud-sync-btn");
+    button.disabled = true;
+    setCloudSyncStatus("Синхронизация с Google...");
+    try {
+        const ids = await window.syncMapProgressToCloud(
+            CURRENT_MAP_CONFIG.id,
+            () => normalizeFoundIds(foundIds),
+            syncedIds => {
+                foundIds = normalizeFoundIds(syncedIds);
+                localStorage.setItem(STORAGE_KEY_FOUND, JSON.stringify(foundIds));
+                renderMarkers();
+                renderFilters();
+            }
+        );
+        setCloudSyncStatus(`Синхронизировано: ${normalizeFoundIds(ids || foundIds).length} меток.`);
+    } catch (error) {
+        setCloudSyncStatus(`Ошибка синхронизации: ${error.message || "проверьте вход и подключение"}`);
+        console.error("Не удалось синхронизировать прогресс с Google:", error);
+    } finally {
+        button.disabled = false;
+    }
+}
+
 window.addEventListener("keydown", e => {
     if (e.key === "Control") document.body.classList.add("ctrl-pressed");
 });
@@ -562,14 +603,18 @@ async function initMap() {
     await loadPreboundMarkers();
     loadCurrentMapImage();
     window.connectMapProgressSync(CURRENT_MAP_CONFIG.id, () => foundIds, ids => {
-        foundIds = ids;
+        foundIds = normalizeFoundIds(ids);
         localStorage.setItem(STORAGE_KEY_FOUND, JSON.stringify(foundIds));
         renderMarkers();
         renderFilters();
         showStatus(`☁️ Синхронизировано с Google (${foundIds.length} меток)`);
+        setCloudSyncStatus(`Прогресс загружен из Google: ${foundIds.length} меток.`);
+    }, error => {
+        setCloudSyncStatus(`Ошибка загрузки из Google: ${error.message || "проверьте подключение"}`);
     });
 
     setInterval(autoSaveToBrowserCache, 3 * 60 * 1000);
+    setInterval(saveProgressToCloud, 5 * 1000);
 }
 
 function autoSaveToBrowserCache() {

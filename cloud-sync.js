@@ -19,43 +19,115 @@
         return db.collection("users").doc(user.uid).collection("mapProgress").doc(mapId);
     }
 
-    window.connectMapProgressSync = function (mapId, getLocalIds, applyIds) {
-        auth.onAuthStateChanged(async user => {
-            const state = { uid: user?.uid, ready: false };
-            mapStates.set(mapId, state);
-            if (!user) return;
+    function uniqueIds(ids) {
+        const seen = new Set();
+        return (Array.isArray(ids) ? ids : []).filter(id => {
+            const key = String(id);
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        });
+    }
 
-            try {
-                const ref = progressRef(user, mapId);
-                const snapshot = await ref.get();
-                if (mapStates.get(mapId) !== state || auth.currentUser?.uid !== user.uid) return;
+    function cloudIdsFromSnapshot(snapshot) {
+        if (!snapshot.exists) return [];
+        const data = snapshot.data();
+        if (Array.isArray(data.foundIds)) return data.foundIds;
+        if (Array.isArray(data.found)) return data.found;
+        return [];
+    }
 
-                const cloudIds = snapshot.exists && Array.isArray(snapshot.data().foundIds)
-                    ? snapshot.data().foundIds
-                    : [];
-                const mergedIds = Array.from(new Set([...getLocalIds(), ...cloudIds]));
-                applyIds(mergedIds);
-                state.ready = true;
+    async function synchronizeProgress(user, mapId, state, forceWrite = false) {
+        if (state.syncPromise) return state.syncPromise;
+
+        const syncPromise = (async () => {
+            const ref = progressRef(user, mapId);
+            const snapshot = await ref.get();
+            if (mapStates.get(mapId) !== state || auth.currentUser?.uid !== user.uid) return null;
+
+            const mergedIds = uniqueIds([...state.getLocalIds(), ...cloudIdsFromSnapshot(snapshot)]);
+            state.applyIds(mergedIds);
+            state.ready = true;
+
+            const idsKey = JSON.stringify(mergedIds.map(String).sort());
+            if (forceWrite || idsKey !== state.lastSavedKey) {
                 await ref.set({
                     foundIds: mergedIds,
                     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
-            } catch (error) {
-                console.error("Не удалось загрузить прогресс из Google Cloud Firestore:", error);
+                state.lastSavedKey = idsKey;
             }
+            return mergedIds;
+        })();
+
+        state.syncPromise = syncPromise;
+        try {
+            return await syncPromise;
+        } finally {
+            if (state.syncPromise === syncPromise) state.syncPromise = null;
+        }
+    }
+
+    window.connectMapProgressSync = function (mapId, getLocalIds, applyIds, onError) {
+        auth.onAuthStateChanged(user => {
+            const state = {
+                uid: user?.uid,
+                ready: false,
+                lastSavedKey: null,
+                getLocalIds,
+                applyIds,
+                onError,
+                syncPromise: null
+            };
+            mapStates.set(mapId, state);
+            if (!user) return;
+
+            synchronizeProgress(user, mapId, state).catch(error => {
+                console.error("Не удалось загрузить прогресс из Google Cloud Firestore:", error);
+                if (state.onError) state.onError(error);
+            });
         });
     };
 
     window.saveMapProgressToCloud = function (mapId, foundIds) {
         const user = auth.currentUser;
         const state = mapStates.get(mapId);
-        if (!user || !state?.ready || state.uid !== user.uid) return;
+        if (!user || !state || state.uid !== user.uid) return;
+
+        if (!state.ready) {
+            return synchronizeProgress(user, mapId, state).catch(error => {
+                console.error("Не удалось загрузить прогресс из Google Cloud Firestore:", error);
+                if (state.onError) state.onError(error);
+            });
+        }
+
+        const normalizedIds = uniqueIds(foundIds);
+        const idsKey = JSON.stringify(normalizedIds.map(String).sort());
+        if (idsKey === state.lastSavedKey) return;
 
         return progressRef(user, mapId).set({
-            foundIds: Array.from(new Set(foundIds)),
+            foundIds: normalizedIds,
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        }).then(() => {
+            state.lastSavedKey = idsKey;
         }).catch(error => {
             console.error("Не удалось сохранить прогресс в Google Cloud Firestore:", error);
+            if (state.onError) state.onError(error);
         });
+    };
+
+    window.syncMapProgressToCloud = async function (mapId, getLocalIds, applyIds) {
+        const user = auth.currentUser;
+        if (!user) throw new Error("Сначала войдите через Google.");
+
+        let state = mapStates.get(mapId);
+        if (!state || state.uid !== user.uid) {
+            state = { uid: user.uid, ready: false, lastSavedKey: null, syncPromise: null, getLocalIds, applyIds, onError: null };
+            mapStates.set(mapId, state);
+        }
+
+        state.getLocalIds = getLocalIds;
+        state.applyIds = applyIds;
+        return synchronizeProgress(user, mapId, state, true);
     };
 })();
