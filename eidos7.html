@@ -345,6 +345,9 @@ body.ctrl-pressed .custom-pin { cursor:move !important; box-shadow:0 0 10px #50e
             <button onclick="setAllCategories(true)">👁 Показать все</button>
             <button onclick="setAllCategories(false)">🙈 Скрыть все</button>
         </div>
+        <div class="btn-group" style="margin-top: 8px;">
+            <button id="hide-found-markers-btn" onclick="toggleFoundMarkersVisibility()" aria-pressed="false">🙈 Скрыть отмеченные</button>
+        </div>
     </div>
 
     <div class="filters-list" id="filters-container"></div>
@@ -423,6 +426,7 @@ const markersLayer = L.layerGroup();
 let markersData = loadJSON(STORAGE_KEY_MARKERS, []);
 let foundIds = loadJSON(STORAGE_KEY_FOUND, []);
 let activeCategories = Object.keys(CATEGORIES).reduce((acc,key)=>({...acc,[key]:true}),{});
+let hideFoundMarkers = false;
 const auth = firebase.auth();
 
 function loadJSON(key, fallback) {
@@ -709,6 +713,7 @@ function renderMarkers() {
         const isFound=foundIds.includes(marker.id);
         if(isFound) foundCount++;
         if(!activeCategories[marker.category]) return;
+        if(hideFoundMarkers && isFound) return;
         if(query && !(marker.title||"").toLowerCase().includes(query) && !(marker.desc||"").toLowerCase().includes(query)) return;
 
         const cat=CATEGORIES[marker.category]||CATEGORIES.miscellaneous;
@@ -818,6 +823,13 @@ function toggleCategory(key,state) {
 function setAllCategories(state) {
     Object.keys(CATEGORIES).forEach(k=>activeCategories[k]=state);
     renderMarkers();renderFilters();
+}
+function toggleFoundMarkersVisibility() {
+    hideFoundMarkers = !hideFoundMarkers;
+    const button = document.getElementById("hide-found-markers-btn");
+    button.textContent = hideFoundMarkers ? "👁 Показать отмеченные" : "🙈 Скрыть отмеченные";
+    button.setAttribute("aria-pressed", String(hideFoundMarkers));
+    renderMarkers();
 }
 function toggleFound(id) {
     if(foundIds.includes(id)) foundIds=foundIds.filter(x=>x!==id);
