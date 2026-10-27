@@ -3,41 +3,2000 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="description" content="Интерактивная карта Stellar Blade — Атлесс Левуар (Altess Levoire).">
 <link rel="icon" type="image/png" href="avatar-favicon.png">
-<title>Интерактивная карта Stellar Blade — Атлесс Левуар (Altess Levoire)</title>
+<meta name="description" content="Интерактивная карта Stellar Blade — Атлесс Левуар (Altess Levoire).">
+<title>Интерактивная карта Stellar Blade by BroskiPlay — Атлесс Левуар (Altess Levoire)</title>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+<script src="cloud-sync.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
-* { box-sizing:border-box; }
-body {
-    min-height:100vh; margin:0; padding:24px;
-    display:grid; place-items:center;
-    background:radial-gradient(circle at center, #1e2638 0%, #0f131d 100%);
-    color:#e0e6ed; font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;
+@font-face {
+    font-family: 'icomoon';
+    src: url('icons.woff?v=1') format('woff'), url('icons.ttf?v=1') format('truetype');
+    font-weight: normal; font-style: normal; font-display: block;
 }
-main { width:min(100%, 560px); text-align:center; }
-.eyebrow { margin:0 0 12px; color:#50e3c2; font-size:12px; font-weight:700; text-transform:uppercase; }
-h1 { margin:0; color:#fff; font-size:clamp(25px, 6vw, 36px); line-height:1.2; }
-.status { margin:18px 0 26px; color:#aab5c5; line-height:1.6; }
-.actions { display:flex; justify-content:center; flex-wrap:wrap; gap:10px; }
-.button {
-    display:inline-flex; min-height:44px; align-items:center; justify-content:center;
-    padding:10px 16px; border:1px solid #384152; border-radius:7px;
-    background:#252b37; color:#fff; font-size:13px; font-weight:700;
-    text-decoration:none; transition:filter .15s, transform .15s;
+[class^="icon-"], [class*=" icon-"] {
+    font-family: 'icomoon' !important; speak: never; font-style: normal; font-weight: normal;
+    font-variant: normal; text-transform: none; line-height: 1;
+    -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
 }
-.button:hover { filter:brightness(1.15); transform:translateY(-1px); }
-.button.donate { border-color:#ef6672; background:#d94350; }
+.icon-adams_clothes:before { content: "\e900"; color:#fff; }
+.icon-beta_core:before { content: "\e901"; color:#fff; }
+.icon-body_core:before { content: "\e902"; color:#fff; }
+.icon-boss:before { content: "\e903"; color:#fff; }
+.icon-box:before { content: "\e904"; color:#fff; }
+.icon-bulletin_board:before { content: "\e905"; color:#fff; }
+.icon-bulletin_board_request:before { content: "\e906"; color:#fff; }
+.icon-camp:before { content: "\e907"; color:#fff; }
+.icon-can:before { content: "\e908"; color:#fff; }
+.icon-data_bank:before { content: "\e909"; color:#fff; }
+.icon-drone_appearance:before { content: "\e90a"; color:#fff; }
+.icon-drone_upgrade_module:before { content: "\e90b"; color:#fff; }
+.icon-earrings:before { content: "\e90c"; color:#fff; }
+.icon-easter_egg:before { content: "\e90d"; color:#fff; }
+.icon-exospine:before { content: "\e90e"; color:#fff; }
+.icon-face_decoration:before { content: "\e90f"; color:#fff; }
+.icon-fast_travel:before { content: "\e910"; color:#fff; }
+.icon-fish:before { content: "\e911"; color:#fff; }
+.icon-gear:before { content: "\e912"; color:#fff; }
+.icon-hairstyle:before { content: "\e913"; color:#fff; }
+.icon-lilys_clothes:before { content: "\e914"; color:#fff; }
+.icon-lost_song:before { content: "\e915"; color:#fff; }
+.icon-main_quest:before { content: "\e916"; color:#fff; }
+.icon-memory_stick:before { content: "\e917"; color:#fff; }
+.icon-miscellaneous:before { content: "\e918"; color:#fff; }
+.icon-mission_item:before { content: "\e919"; color:#fff; }
+.icon-nano_suit:before { content: "\e91a"; color:#fff; }
+.icon-naytiba:before { content: "\e91b"; color:#fff; }
+.icon-omnibolt:before { content: "\e91c"; color:#fff; }
+.icon-passcode:before { content: "\e91d"; color:#fff; }
+.icon-photo_spot:before { content: "\e91e"; color:#fff; }
+.icon-point_of_interest:before { content: "\e91f"; color:#fff; }
+.icon-safehouse:before { content: "\e920"; color:#fff; }
+.icon-side_quest:before { content: "\e921"; color:#fff; }
+.icon-stellar_tear:before { content: "\e922"; color:#fff; }
+.icon-transition:before { content: "\e923"; color:#fff; }
+.icon-traversal:before { content: "\e924"; color:#fff; }
+.icon-tumbler_expansion_module:before { content: "\e925"; color:#fff; }
+.icon-vendor:before { content: "\e926"; color:#fff; }
+.icon-weapon_core:before { content: "\e927"; color:#fff; }
+
+.leaflet-control-attribution { display: none !important; }
+
+* { box-sizing:border-box; margin:0; padding:0; font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif; }
+body { display:flex; height:100vh; width:100vw; background:#141923; color:#e0e6ed; overflow:hidden; position:relative; }
+
+.social-links { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+.social-btn {
+    display:inline-flex; align-items:center; gap:7px;
+    padding:6px 11px; border-radius:6px; font-size:12px; font-weight:700;
+    text-decoration:none; color:#fff; transition:transform .15s, filter .15s;
+    border:1px solid rgba(255,255,255,.15);
+}
+.social-btn:hover { transform:translateY(-1px); filter:brightness(1.12); }
+.social-btn svg { width:15px; height:15px; fill:currentColor; flex-shrink:0; }
+.social-twitch { background:#6441a5; border-color:#7d5bbe; }
+.social-youtube { background:#c4302b; border-color:#e0443e; }
+.social-donate { background:#d94350; border-color:#ef6672; }
+
+#sidebar {
+    width:360px; min-width:360px; height:100vh; background:#1a1e26;
+    border-right:1px solid #2e3543; display:flex; flex-direction:column;
+    z-index:1000; box-shadow:2px 0 10px rgba(0,0,0,.5);
+    transition:margin-left .3s ease; position:relative;
+}
+#sidebar.collapsed { margin-left:-360px; }
+
+#sidebar-toggle-btn {
+    position:fixed; top:14px; left:360px; z-index:1100;
+    width:34px; height:42px; background:#1a1e26; color:#50e3c2;
+    border:1px solid #2e3543; border-left:none; border-radius:0 8px 8px 0;
+    cursor:pointer; display:flex; align-items:center; justify-content:center;
+    font-size:15px; font-weight:bold; box-shadow:3px 2px 8px rgba(0,0,0,.45);
+    transition:left .3s ease, background .2s;
+}
+#sidebar-toggle-btn:hover { background:#252b37; }
+#sidebar.collapsed + #sidebar-toggle-btn { left:0; }
+
+.sidebar-header { padding:14px 16px; background:linear-gradient(135deg,#232a38,#161922); border-bottom:1px solid #2e3543; }
+.header-top-row { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; margin-bottom:10px; }
+.sidebar-header h1 { font-size:15px; color:#50e3c2; line-height:1.3; text-transform:uppercase; letter-spacing:.6px; }
+.home-back-btn {
+    display:inline-flex; align-items:center; text-decoration:none; color:#fff; font-weight:600;
+    padding:5px 9px; border-radius:6px; font-size:11px; background:#252b37; border:1px solid #384152; flex-shrink:0;
+}
+.home-back-btn:hover { background:#3a4659; }
+.autosave-indicator { font-size:10.5px; color:#6c7a89; margin-top:8px; display:flex; align-items:center; justify-content:space-between; }
+.auth-mini-box { margin-top:10px; padding:8px 10px; background:#151921; border:1px solid #2e3543; border-radius:6px; display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.auth-mini-info { display:flex; align-items:center; gap:8px; overflow:hidden; }
+.auth-mini-avatar { width:26px; height:26px; border-radius:50%; border:1px solid #50e3c2; display:none; flex-shrink:0; }
+.auth-mini-text { font-size:11px; color:#8a99ad; line-height:1.25; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.auth-mini-text b { color:#e0e6ed; }
+.auth-mini-btn { width:auto !important; margin:0 !important; padding:5px 9px !important; font-size:11px !important; flex-shrink:0; }
+.cloud-sync-btn { margin:6px 0 0; padding:5px 8px; font-size:11px; }
+.cloud-sync-status { color:#8a99ad; font-size:11px; line-height:1.35; margin-top:5px; }
+
+.section { padding:10px 16px; border-bottom:1px solid #262c36; }
+select, input[type="text"], input[type="number"], textarea, button { width:100%; padding:7px 10px; background:#252b37; border:1px solid #384152; color:#fff; border-radius:6px; font-size:13px; margin-bottom:6px; }
+select:focus, input:focus, textarea:focus { outline:none; border-color:#50e3c2; }
+button { cursor:pointer; font-weight:600; transition:background .2s; background:#2d3646; }
+button:hover { background:#3a4659; }
+button.primary { background:#0088cc; border-color:#0099e6; }
+button.primary:hover { background:#0099e6; }
+button.success { background:#27ae60; border-color:#2ecc71; }
+button.success:hover { background:#2ecc71; }
+button.active-mode { background:#e67e22; border-color:#d35400; color:#fff; }
+.btn-group { display:flex; gap:6px; }
+.btn-group button { margin-bottom:0; padding:6px 8px; font-size:12px; }
+
+details.submenu { background:#151921; border:1px solid #2e3543; border-radius:6px; margin-bottom:6px; overflow:hidden; }
+details.submenu > summary { padding:8px 12px; cursor:pointer; font-weight:600; font-size:12.5px; color:#50e3c2; user-select:none; list-style:none; display:flex; align-items:center; justify-content:space-between; background:#1c222d; }
+details.submenu > summary::-webkit-details-marker { display:none; }
+details.submenu > summary::after { content:"▼"; font-size:10px; color:#8a99ad; transition:transform .2s; }
+details.submenu[open] > summary::after { transform:rotate(180deg); }
+details.submenu[open] > summary { border-bottom:1px solid #2e3543; }
+.submenu-body { padding:10px; font-size:12px; max-height:330px; overflow-y:auto; }
+
+details.nested-menu { background:#1a1f29; border:1px solid #283040; border-radius:5px; margin-bottom:6px; }
+details.nested-menu > summary { padding:6px 10px; cursor:pointer; font-weight:600; font-size:12px; color:#d0d7e1; user-select:none; list-style:none; display:flex; align-items:center; justify-content:space-between; }
+details.nested-menu > summary::-webkit-details-marker { display:none; }
+details.nested-menu > summary::after { content:"▸"; font-size:11px; color:#8a99ad; transition:transform .2s; }
+details.nested-menu[open] > summary::after { transform:rotate(90deg); }
+.nested-body { padding:8px 10px; border-top:1px solid #283040; }
+
+.calib-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:5px; gap:4px; }
+.calib-row span { flex:1; color:#b0bac9; font-size:12px; }
+.calib-row button { width:auto; padding:3px 9px; margin:0; font-size:11px; }
+.filters-list { flex:1; overflow-y:auto; padding:8px 14px; display:grid; grid-template-columns:1fr; gap:4px; }
+.filter-item { display:flex; align-items:center; justify-content:space-between; padding:5px 9px; background:#232832; border-radius:6px; cursor:pointer; user-select:none; transition:background .15s; font-size:12.5px; }
+.filter-item:hover { background:#2c3340; }
+.filter-item.disabled { opacity:.38; }
+.filter-left { display:flex; align-items:center; gap:9px; overflow:hidden; }
+.filter-left span.cat-label { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.filter-icon-box { width:24px; height:24px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; flex-shrink:0; border:1px solid rgba(255,255,255,.4); }
+.filter-icon-box span { display:block; line-height:1; }
+.badge { background:#161920; padding:2px 7px; border-radius:10px; font-size:11px; color:#8a99ad; flex-shrink:0; }
+#map { flex:1; height:100vh; background:#141923; }
+
+.custom-pin {
+    display:flex; align-items:center; justify-content:center;
+    width:28px; height:28px; border-radius:50% 50% 50% 0;
+    transform:rotate(-45deg); border:1.5px solid rgba(255,255,255,.85);
+    box-shadow:-2px 2px 5px rgba(0,0,0,.75); font-size:14px;
+    transition:transform .15s, opacity .2s, filter .2s, box-shadow .15s;
+}
+.custom-pin span { transform:rotate(45deg); display:inline-block; }
+.custom-pin:hover { transform:rotate(-45deg) scale(1.22); }
+.custom-pin.found { opacity:.32; filter:grayscale(85%); border-color:#666; }
+body.ctrl-pressed .custom-pin { cursor:move !important; box-shadow:0 0 10px #50e3c2; border-color:#50e3c2; }
+
+.leaflet-popup-content-wrapper { background:#1e232d; color:#fff; border:1px solid #384152; border-radius:8px; width:280px; }
+.leaflet-popup-content { margin:12px; width:254px !important; }
+.leaflet-popup-tip { background:#1e232d; }
+.popup-title { font-size:15px; font-weight:bold; margin-bottom:4px; color:#50e3c2; }
+.popup-cat { font-size:11px; color:#8a99ad; text-transform:uppercase; margin-bottom:8px; display:flex; align-items:center; gap:6px; }
+.popup-desc { font-size:12.5px; margin-bottom:10px; line-height:1.4; color:#d0d7e1; white-space:pre-line; }
+.popup-img { width:100%; border-radius:6px; margin-bottom:10px; border:1px solid #384152; cursor:zoom-in; display:block; }
+.popup-actions { display:flex; gap:8px; }
+.popup-actions button { padding:6px 10px; font-size:12px; margin:0; }
+.btn-found { background:#27ae60; border:none; }
+.btn-found:hover { background:#2ecc71; }
+.btn-delete { background:#c0392b; border:none; width:auto; }
+.btn-delete:hover { background:#e74c3c; }
+.panel-label { color:#50e3c2; font-weight:bold; margin-bottom:6px; }
+.panel-note { color:#8a99ad; font-size:11px; line-height:1.35; margin:4px 0 8px; }
+.status-msg { font-size:11px; padding:5px 8px; border-radius:4px; background:#12151c; color:#50e3c2; margin-top:6px; display:none; }
+@media (max-width:700px) {
+    body { height:100dvh; }
+    #sidebar {
+        position:absolute; inset:0 auto 0 0; width:min(360px, calc(100vw - 56px)); min-width:0;
+        height:100dvh; max-height:100dvh; overflow-y:auto; overscroll-behavior:contain;
+        transition:transform .3s ease;
+    }
+    #sidebar.collapsed { margin-left:0; transform:translateX(-100%); }
+    #sidebar-toggle-btn { top:max(12px, env(safe-area-inset-top)); left:min(360px, calc(100vw - 56px)); width:44px; height:48px; }
+    #map { height:100dvh; min-width:0; }
+    .leaflet-control-zoom a { width:44px; height:44px; line-height:44px; font-size:22px; }
+    select, input[type="text"], input[type="number"], textarea { min-height:44px; }
+    .btn-group button { min-height:44px; }
+    .filter-item { min-height:42px; }
+}
 </style>
 </head>
 <body>
-<main>
-    <p class="eyebrow">Stellar Blade</p>
-    <h1>Атлесс Левуар<br>(Altess Levoire)</h1>
-    <p class="status">Интерактивная карта и база меток для этой локации пока не добавлены.</p>
-    <nav class="actions" aria-label="Навигация">
-        <a class="button" href="index.html">← На главную</a>
-        <a class="button donate" href="https://www.donationalerts.com/r/broskiplay" target="_blank" rel="noopener noreferrer">☕ DONATE</a>
-    </nav>
-</main>
+
+<div id="sidebar">
+    <div class="sidebar-header">
+        <div class="header-top-row">
+            <h1>Интерактивная карта Stellar Blade by BroskiPlay</h1>
+            <a href="index.html" class="home-back-btn" title="Вернуться в главное меню">🏠 Главная</a>
+        </div>
+        <div class="social-links">
+            <a href="https://www.twitch.tv/broskiplay" target="_blank" rel="noopener noreferrer" class="social-btn social-twitch">
+                <svg viewBox="0 0 24 24"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z"/></svg>
+                <span>Twitch</span>
+            </a>
+            <a href="https://youtube.com/@broskiplayt" target="_blank" rel="noopener noreferrer" class="social-btn social-youtube">
+                <svg viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+                <span>YouTube</span>
+            </a>
+            <a href="https://www.donationalerts.com/r/broskiplay" target="_blank" rel="noopener noreferrer" class="social-btn social-donate">☕ DONATE</a>
+        </div>
+        <div class="auth-mini-box">
+            <div class="auth-mini-info">
+                <img id="auth-avatar" class="auth-mini-avatar" src="" alt="Аватар пользователя">
+                <div id="auth-status" class="auth-mini-text"><b>Локальный режим</b><br><span>Синхронизация выключена</span></div>
+            </div>
+            <button id="auth-btn" class="primary auth-mini-btn" onclick="toggleGoogleAuth()">🔑 Google</button>
+        </div>
+        <button id="cloud-sync-btn" class="cloud-sync-btn" onclick="syncProgressToCloud()">☁️ Синхронизировать прогресс</button>
+        <div id="cloud-sync-status" class="cloud-sync-status" aria-live="polite"></div>
+        <div class="autosave-indicator">
+            <span>🔄 Автосохранение: локально + облако</span>
+            <span id="autosave-time"></span>
+        </div>
+    </div>
+
+    <div class="section">
+        <!-- Быстрый переход между отдельными HTML-файлами локаций -->
+        <select id="page-nav-selector" onchange="window.location.href = this.value">
+            <option value="eidos7.html">🗺 Эйдос 7 (Eidos 7)</option>
+            <option value="xion.html">🗺 Город Ксион (Xion City)</option>
+            <option value="wasteland.html">🗺 Пустошь (Wasteland)</option>
+            <option value="altess_levoire.html">🗺 Атлесс Левуар (Altess Levoire)</option>
+            <option value="matrix11.html">🗺 Матрица 11 (Matrix 11)</option>
+            <option value="great_desert.html">🗺 Великая пустыня (Great Desert)</option>
+            <option value="abyss_levoire.html">🗺 Бездна Левуар (Abyss Levoire)</option>
+            <option value="spire4.html">🗺 Шпиль 4 (Spire 4)</option>
+            <option value="eidos9.html">🗺 Эйдос 9 (Eidos 9)</option>
+        </select>
+        <input type="text" id="search-input" placeholder="🔍 Поиск по названию или описанию...">
+        <div style="font-size:12px;color:#8a99ad;display:flex;justify-content:space-between;">
+            <span>Собрано на локации:</span>
+            <b id="progress-counter" style="color:#50e3c2;">0 / 0</b>
+        </div>
+    </div>
+
+    <div class="section">
+        <details class="submenu">
+            <summary>⚙️ Настройки и управление метками</summary>
+            <div class="submenu-body">
+                <button id="toggle-add-btn" onclick="toggleAddMode()" style="margin-bottom:6px;">+ Добавить свою метку на карту</button>
+                <div class="panel-note">💡 Зажмите клавишу <b>Ctrl</b> и перетащите любую метку мышью, чтобы вручную настроить её местоположение.</div>
+
+                <details class="nested-menu">
+                    <summary>🔧 Подгонка и масштаб всех меток</summary>
+                    <div class="nested-body">
+                        <div class="calib-row"><span>Сдвиг по X:</span>
+                            <button onclick="shiftAllMarkers(-75,0)">◀◀</button><button onclick="shiftAllMarkers(-15,0)">◀</button>
+                            <button onclick="shiftAllMarkers(15,0)">▶</button><button onclick="shiftAllMarkers(75,0)">▶▶</button>
+                        </div>
+                        <div class="calib-row"><span>Сдвиг по Y:</span>
+                            <button onclick="shiftAllMarkers(0,75)">▲▲</button><button onclick="shiftAllMarkers(0,15)">▲</button>
+                            <button onclick="shiftAllMarkers(0,-15)">▼</button><button onclick="shiftAllMarkers(0,-75)">▼▼</button>
+                        </div>
+                        <div class="calib-row"><span>Ширина (X):</span>
+                            <button onclick="scaleMarkersAxis(0.98,1)">➖ Уже</button><button onclick="scaleMarkersAxis(1.02,1)">➕ Шире</button>
+                        </div>
+                        <div class="calib-row"><span>Высота (Y):</span>
+                            <button onclick="scaleMarkersAxis(1,0.98)">➖ Ниже</button><button onclick="scaleMarkersAxis(1,1.02)">➕ Выше</button>
+                        </div>
+                    </div>
+                </details>
+
+                <details class="nested-menu">
+                    <summary>📌 Управление импортированными метками</summary>
+                    <div class="nested-body">
+                        <label for="shift-step" style="display:block;margin-bottom:4px;color:#b0bac9;">Шаг сдвига (пиксели):</label>
+                        <input type="number" id="shift-step" value="25" min="1" step="1">
+                        <div class="calib-row"><span>По X (влево/вправо):</span>
+                            <button onclick="shiftImported(-1,0)">◀</button>
+                            <button onclick="shiftImported(1,0)">▶</button>
+                        </div>
+                        <div class="calib-row"><span>По Y (вверх/вниз):</span>
+                            <button onclick="shiftImported(0,1)">▲</button>
+                            <button onclick="shiftImported(0,-1)">▼</button>
+                        </div>
+                        <hr style="border-color:#283040;margin:8px 0;">
+                        <button onclick="mirrorImportedX()">⇄ Отразить по X (лево ↔ право)</button>
+                        <button onclick="mirrorImportedY()">⇅ Отразить по Y (верх ↔ низ)</button>
+                        <button onclick="resetImportedTransforms()">↩ Сбросить сдвиги и отражения</button>
+                        <hr style="border-color:#283040;margin:8px 0;">
+                        <button onclick="reloadDefaultMarkersFromFile()" class="primary">🔄 Перезагрузить метки из файла карты</button>
+                        <button onclick="deleteImportedMarkers()" style="background:#922b21;border-color:#c0392b;">🗑 Удалить импортированные метки</button>
+                    </div>
+                </details>
+
+                <details class="nested-menu">
+                    <summary>🗂 База меток этой карты (JSON)</summary>
+                    <div class="nested-body">
+                        <div class="panel-note">При импорте любые метки из файла автоматически привязываются к этой карте!</div>
+                        <div class="btn-group">
+                            <button onclick="exportData()">💾 Сохранить базу как...</button>
+                            <button onclick="document.getElementById('import-file').click()" class="primary">📂 Импорт базы</button>
+                        </div>
+                        <input type="file" id="import-file" style="display:none" accept=".json,application/json">
+                    </div>
+                </details>
+            </div>
+        </details>
+
+        <details class="submenu">
+            <summary>💾 Сохранение выполненных меток</summary>
+            <div class="submenu-body">
+                <div class="panel-label">Сохранение прогресса этой карты:</div>
+                <div class="btn-group" style="margin-bottom:6px;">
+                    <button class="success" onclick="exportFoundProgress()">💾 Сохранить как...</button>
+                    <button class="primary" onclick="document.getElementById('import-found-file').click()">📂 Загрузить</button>
+                </div>
+                <input type="file" id="import-found-file" style="display:none" accept=".json,application/json">
+                <div class="btn-group" style="margin-bottom:6px;">
+                    <button onclick="saveQuickCheckpoint()">📌 Сохранить сейв как...</button>
+                    <button onclick="loadQuickCheckpoint()">🔄 Из кэша</button>
+                </div>
+                <button onclick="resetFoundProgress()" style="background:#5c2828;border-color:#7d3434;font-size:11px;padding:5px;">✖ Сбросить выполненные метки</button>
+                <div id="status-msg" class="status-msg"></div>
+            </div>
+        </details>
+
+        <div class="btn-group">
+            <button onclick="setAllCategories(true)">👁 Показать все</button>
+            <button onclick="setAllCategories(false)">🙈 Скрыть все</button>
+        </div>
+    </div>
+
+    <div class="filters-list" id="filters-container"></div>
+</div>
+
+<button id="sidebar-toggle-btn" onclick="toggleSidebar()" title="Скрыть / показать боковое меню">◀</button>
+<div id="map"></div>
+
+<script>
+window.EMBEDDED_MARKERS = [
+    {
+        "id": 463833,
+        "map": "altess-levoire",
+        "lat": 3591.68,
+        "lng": 1777.21,
+        "category": "camp",
+        "title": "Camp",
+        "desc": "At the top of the stairs.",
+        "img": "https://media.mapgenie.io/storage/media/e00b3723-d15a-423e-95cf-c1dd27d50824.jpg",
+        "imported": true
+    },
+    {
+        "id": 463837,
+        "map": "altess-levoire",
+        "lat": 6868.52,
+        "lng": 6397.72,
+        "category": "camp",
+        "title": "Camp",
+        "desc": "On your left as you enter the room.",
+        "img": "https://media.mapgenie.io/storage/media/b4e671c1-112a-4511-b710-d0082f37e915.jpg",
+        "imported": true
+    },
+    {
+        "id": 463839,
+        "map": "altess-levoire",
+        "lat": 4712.47,
+        "lng": 4004.44,
+        "category": "camp",
+        "title": "Camp",
+        "desc": "In front of you when you exit the elevator.",
+        "img": "https://media.mapgenie.io/storage/media/5dc18863-cb81-48eb-86db-726f16e2d7d4.jpg",
+        "imported": true
+    },
+    {
+        "id": 463849,
+        "map": "altess-levoire",
+        "lat": 5186.91,
+        "lng": 4701.09,
+        "category": "camp",
+        "title": "Camp",
+        "desc": "",
+        "img": "https://media.mapgenie.io/storage/media/2de32632-0a5b-4227-a2f6-50d36990c03a.jpg",
+        "imported": true
+    },
+    {
+        "id": 463871,
+        "map": "altess-levoire",
+        "lat": 6826.43,
+        "lng": 4859.24,
+        "category": "camp",
+        "title": "Camp",
+        "desc": "In the corridor after the symbols puzzle.",
+        "img": "https://media.mapgenie.io/storage/media/33d09001-66a1-4c3f-a43e-4592e150a01a.jpg",
+        "imported": true
+    },
+    {
+        "id": 463852,
+        "map": "altess-levoire",
+        "lat": 2767.07,
+        "lng": 6531.75,
+        "category": "point_of_interest",
+        "title": "Dead Scavenger",
+        "desc": "Slumped against the wall next to the door.\n\nExamine the body to receive SP.",
+        "img": "https://media.mapgenie.io/storage/media/c4f55302-af3b-4f4f-b84c-4c7ba35dedc3.jpg",
+        "imported": true
+    },
+    {
+        "id": 463865,
+        "map": "altess-levoire",
+        "lat": 7092.11,
+        "lng": 6014.12,
+        "category": "point_of_interest",
+        "title": "Dead Scavenger",
+        "desc": "Slumped against the wall.\n\nExamine the body to receive SP.",
+        "img": "https://media.mapgenie.io/storage/media/86b288b9-7a7c-4bc1-9d69-cd114e2c4ea5.jpg",
+        "imported": true
+    },
+    {
+        "id": 463889,
+        "map": "altess-levoire",
+        "lat": 6516.01,
+        "lng": 3927.79,
+        "category": "point_of_interest",
+        "title": "Dead Scavenger",
+        "desc": "Laying inside a room that unlocks when you activate [Laser Panel #2].\n\nExamine the body to receive SP.",
+        "img": "https://media.mapgenie.io/storage/media/51573d50-57de-4ba6-b617-26dc26539d12.jpg",
+        "imported": true
+    },
+    {
+        "id": 463891,
+        "map": "altess-levoire",
+        "lat": 6473.04,
+        "lng": 4056.3,
+        "category": "point_of_interest",
+        "title": "Dead Scavenger",
+        "desc": "Slumped against the boxes in a room that unlocks when you activate [Laser Panel #2].\n\nExamine the body to receive SP.",
+        "img": "https://media.mapgenie.io/storage/media/8791a627-f52f-40a7-b084-03f4312508e4.jpg",
+        "imported": true
+    },
+    {
+        "id": 463897,
+        "map": "altess-levoire",
+        "lat": 5136.94,
+        "lng": 4488.71,
+        "category": "point_of_interest",
+        "title": "Dead Scavenger",
+        "desc": "Laying face-down in the corridor.\n\nExamine the body to receive SP.",
+        "img": "https://media.mapgenie.io/storage/media/6234d1c7-5932-41b8-8afd-98cf81afb2d5.jpg",
+        "imported": true
+    },
+    {
+        "id": 463904,
+        "map": "altess-levoire",
+        "lat": 3279.12,
+        "lng": 1125.65,
+        "category": "point_of_interest",
+        "title": "Dead Scavenger",
+        "desc": "Laying face-down at the bottom of the ladder.\n\nExamine the body to receive SP.",
+        "img": "https://media.mapgenie.io/storage/media/dac56f24-1fd4-4d88-887a-ea940d148dfc.jpg",
+        "imported": true
+    },
+    {
+        "id": 463832,
+        "map": "altess-levoire",
+        "lat": 624.72,
+        "lng": 6480.8,
+        "category": "transition",
+        "title": "Wasteland",
+        "desc": "**Transitions To:** [Wasteland]",
+        "img": "https://media.mapgenie.io/storage/media/be1cc072-b588-4f4a-88ee-56cd17a0a565.jpg",
+        "imported": true
+    },
+    {
+        "id": 463844,
+        "map": "altess-levoire",
+        "lat": 4073.13,
+        "lng": 6477.64,
+        "category": "traversal",
+        "title": "2x Wall-Run & 1x Rope",
+        "desc": "Appear in the corridor after you're scanned. Jump and dash to reach the rope.",
+        "img": "https://media.mapgenie.io/storage/media/6b527bdd-d06c-4bfe-83e5-1fc90df4930d.jpg",
+        "imported": true
+    },
+    {
+        "id": 463847,
+        "map": "altess-levoire",
+        "lat": 3744.83,
+        "lng": 1985.75,
+        "category": "traversal",
+        "title": "Ledges",
+        "desc": "After climbing the ladder, you'll need to jump across a gap and climb up some ledges to reach the boss arena.",
+        "img": "https://media.mapgenie.io/storage/media/4e0afa6f-bb6f-4edf-afa7-2f9a54b90b70.jpg",
+        "imported": true
+    },
+    {
+        "id": 463840,
+        "map": "altess-levoire",
+        "lat": 4100.61,
+        "lng": 3043.57,
+        "category": "box",
+        "title": "High-Security Box",
+        "desc": "On top of the platform. Climb the ladder to reach it, then use the Hacking Tool upgrade for the drone to unlock it.\n\n**Loot:**\n- Crafting Materials",
+        "img": "https://media.mapgenie.io/storage/media/3af03f2d-018e-46e3-96cf-c948ccb6b19f.jpg",
+        "imported": true
+    },
+    {
+        "id": 463842,
+        "map": "altess-levoire",
+        "lat": 4498.85,
+        "lng": 2609.69,
+        "category": "box",
+        "title": "Box",
+        "desc": "In the small room at the end of the corridor.\n\n**Loot:**\n- Ammunition",
+        "img": "https://media.mapgenie.io/storage/media/7fc98a4b-228f-42b7-af08-6b35a8324a03.jpg",
+        "imported": true
+    },
+    {
+        "id": 463863,
+        "map": "altess-levoire",
+        "lat": 6776.58,
+        "lng": 5804.9,
+        "category": "box",
+        "title": "Box",
+        "desc": "In the corner of the room, next to the door.\n\n**Loot:**\n- Crafting Materials",
+        "img": "https://media.mapgenie.io/storage/media/f68db915-e436-4c6a-9469-14210e76004b.jpg",
+        "imported": true
+    },
+    {
+        "id": 463876,
+        "map": "altess-levoire",
+        "lat": 7243.26,
+        "lng": 4635.48,
+        "category": "box",
+        "title": "Puzzle Box",
+        "desc": "In the first room you'll encounter after climbing the ladder. Watch out for [2x Infector] waiting to ambush you inside.\n\nTo open it, press the arrow keys or d-pad buttons that match the currently lit symbol.\n\n**Loot:**\n- Crafting Materials\n- Consumables",
+        "img": "https://media.mapgenie.io/storage/media/fe2a12ac-a2d7-4043-b1f5-3bef5870a8a1.jpg",
+        "imported": true
+    },
+    {
+        "id": 463887,
+        "map": "altess-levoire",
+        "lat": 6480.04,
+        "lng": 4782.93,
+        "category": "box",
+        "title": "Box",
+        "desc": "Inside a room that unlocks when you activate [Laser Panel #2]\n\n**Loot:**\n- Crafting Materials\n- Usables",
+        "img": "https://media.mapgenie.io/storage/media/3ee030f8-84e0-4445-9a90-1581157e6980.jpg",
+        "imported": true
+    },
+    {
+        "id": 463899,
+        "map": "altess-levoire",
+        "lat": 4364.19,
+        "lng": 3729.17,
+        "category": "box",
+        "title": "Box",
+        "desc": "On your left after dealing with the [Hive].\n\n**Loot:**\n- Crafting Materials",
+        "img": "https://media.mapgenie.io/storage/media/c31b4203-433f-40f2-a5ce-c396354901b3.jpg",
+        "imported": true
+    },
+    {
+        "id": 463908,
+        "map": "altess-levoire",
+        "lat": 3670.76,
+        "lng": 1145.61,
+        "category": "box",
+        "title": "Puzzle Box",
+        "desc": "Next to the ladder.\n\nTo open it, press the arrow keys or d-pad buttons that match the currently lit symbol.\n\n**Loot:**\n- Crafting Materials\n- Usables",
+        "img": "https://media.mapgenie.io/storage/media/9774a7eb-5520-4146-a096-b9463b2247b9.jpg",
+        "imported": true
+    },
+    {
+        "id": 463853,
+        "map": "altess-levoire",
+        "lat": 3142.21,
+        "lng": 6515.75,
+        "category": "data_bank",
+        "title": "You Are Fake",
+        "desc": "**Location:** On the ground between two sets of stairs.\n\n**Category / Number:** Messages #4",
+        "img": "https://media.mapgenie.io/storage/media/9e8224da-c8d5-43dc-86d3-c986d937c2da.jpg",
+        "imported": true
+    },
+    {
+        "id": 463854,
+        "map": "altess-levoire",
+        "lat": 4363.69,
+        "lng": 6522.04,
+        "category": "data_bank",
+        "title": "Booting Sequence",
+        "desc": "**Location:** On the ground you'll reach after jumping off the rope.\n\n**Category / Number:** Log Data #3",
+        "img": "https://media.mapgenie.io/storage/media/a3c49e50-74dc-40d4-b001-bd2dd4202654.jpg",
+        "imported": true
+    },
+    {
+        "id": 463869,
+        "map": "altess-levoire",
+        "lat": 7038.28,
+        "lng": 5780.89,
+        "category": "data_bank",
+        "title": "Humanity Liberation Front",
+        "desc": "**Location:** Found when searching the computer next to the [Power Panel].\n\n**Category / Number:** Messages #5",
+        "img": "https://media.mapgenie.io/storage/media/51ea9683-cea6-4612-8b4e-1c46322a61aa.jpg",
+        "imported": true
+    },
+    {
+        "id": 463870,
+        "map": "altess-levoire",
+        "lat": 6918.36,
+        "lng": 5075.67,
+        "category": "data_bank",
+        "title": "Security Procedure Guide",
+        "desc": "**Location:** Laying on the ground in the area you'll reach after solving the [Symbol Puzzle].\n\n**Category / Number:** Log Data #4",
+        "img": "https://media.mapgenie.io/storage/media/3e093a8a-bc7c-4d7d-bb12-8d23471107f1.jpg",
+        "imported": true
+    },
+    {
+        "id": 463878,
+        "map": "altess-levoire",
+        "lat": 7262.37,
+        "lng": 4056.63,
+        "category": "data_bank",
+        "title": "Visitor Information",
+        "desc": "**Location:** On the ground in the corner.\n\n**Category / Number:** Announcements #2",
+        "img": "https://media.mapgenie.io/storage/media/501dbc2b-fb6c-4098-93c7-506031830907.jpg",
+        "imported": true
+    },
+    {
+        "id": 463890,
+        "map": "altess-levoire",
+        "lat": 6506.9,
+        "lng": 3986.18,
+        "category": "data_bank",
+        "title": "Eidos Company Promotion",
+        "desc": "**Location:** Automatically obtained when you kill the small robot in this room. It only opens when [Laser Panel #2] is activated.\n\n**Category / Number:** Promotions #14",
+        "img": "https://media.mapgenie.io/storage/media/6647f57c-0074-42ef-93b7-dcbd91209dfe.jpg",
+        "imported": true
+    },
+    {
+        "id": 463902,
+        "map": "altess-levoire",
+        "lat": 4553.07,
+        "lng": 3246.7,
+        "category": "passcode",
+        "title": "Passcode",
+        "desc": "**Location:** Found when searching a corpse laying face-down near a door.\n\n**Unlocks:** [Password-Protected Door]\n\n**Password:** μηλαμη",
+        "img": "https://media.mapgenie.io/storage/media/39971b7b-b174-42bd-bc49-ab888bf0425d.jpg",
+        "imported": true
+    },
+    {
+        "id": 463883,
+        "map": "altess-levoire",
+        "lat": 6446.94,
+        "lng": 4699.62,
+        "category": "drone_upgrade_module",
+        "title": "Drone Upgrade Module",
+        "desc": "On a trolley in the corner.",
+        "img": "https://media.mapgenie.io/storage/media/6ae7dcda-44ea-4faf-803d-fc70f7b771d3.jpg",
+        "imported": true
+    },
+    {
+        "id": 463903,
+        "map": "altess-levoire",
+        "lat": 4505.1,
+        "lng": 3185.38,
+        "category": "drone_upgrade_module",
+        "title": "Drone Upgrade Module",
+        "desc": "On a trolley in the corridor.",
+        "img": "https://media.mapgenie.io/storage/media/db5e3f7b-5170-43be-86db-353f68e48167.jpg",
+        "imported": true
+    },
+    {
+        "id": 463912,
+        "map": "altess-levoire",
+        "lat": 4652.27,
+        "lng": 1350.02,
+        "category": "gear",
+        "title": "Shield Penetration Gear",
+        "desc": "Dropped by [Maelstrom]\n\n**Effects:** \n- Shield Penetration +9%\n- Shield Penetration +13%\n- Shield Penetration +16%",
+        "img": null,
+        "imported": true
+    },
+    {
+        "id": 463913,
+        "map": "altess-levoire",
+        "lat": 4656.52,
+        "lng": 1504.35,
+        "category": "gear",
+        "title": "Beta Charge Gear",
+        "desc": "Dropped by [Maelstrom]\n\n**Effects:** \n- Bonus Beta Energy Recharge 6%\n- Bonus Beta Energy Recharge 8%\n- Bonus Beta Energy Recharge 10%",
+        "img": null,
+        "imported": true
+    },
+    {
+        "id": 463909,
+        "map": "altess-levoire",
+        "lat": 3684.75,
+        "lng": 1468.45,
+        "category": "tumbler_expansion_module",
+        "title": "Tumbler Expansion Module",
+        "desc": "Dropped by the small robot on the other side of a half-wall in the tunnel.",
+        "img": "https://media.mapgenie.io/storage/media/20cac33a-ceda-4d57-acf4-4132e8c33ff8.jpg",
+        "imported": true
+    },
+    {
+        "id": 463841,
+        "map": "altess-levoire",
+        "lat": 4479.37,
+        "lng": 1278.28,
+        "category": "weapon_core",
+        "title": "Weapon Core",
+        "desc": "Dropped by [Maelstrom]",
+        "img": null,
+        "imported": true
+    },
+    {
+        "id": 463914,
+        "map": "altess-levoire",
+        "lat": 4489.36,
+        "lng": 1584,
+        "category": "mission_item",
+        "title": "Hyper Cell",
+        "desc": "Can be grabbed after defeating [Maelstrom].\n\nUsed to complete [Altess Levoire].",
+        "img": null,
+        "imported": true
+    },
+    {
+        "id": 463911,
+        "map": "altess-levoire",
+        "lat": 4476.87,
+        "lng": 1421.67,
+        "category": "boss",
+        "title": "Maelstrom",
+        "desc": "",
+        "img": "https://media.mapgenie.io/storage/media/42f47168-533c-42b4-b1b9-8a1e854c1c3b.jpg",
+        "imported": true
+    },
+    {
+        "id": 463835,
+        "map": "altess-levoire",
+        "lat": 7131.71,
+        "lng": 6072.62,
+        "category": "naytiba",
+        "title": "Infector",
+        "desc": "Lurking behind the half-wall near the door.",
+        "img": "https://media.mapgenie.io/storage/media/1a37e4df-248e-4616-b7cf-1b88fd389175.jpg",
+        "imported": true
+    },
+    {
+        "id": 463845,
+        "map": "altess-levoire",
+        "lat": 4081.72,
+        "lng": 3222.49,
+        "category": "naytiba",
+        "title": "Hive",
+        "desc": "Blocking the end of the vent. Aim for the glowing yellow spots while dodging the boxes and you'll hopefully land some shots on the barrels nearby.\n\n_Note: Will not be added to your data bank until later in the game._",
+        "img": "https://media.mapgenie.io/storage/media/aa7062c6-e664-48bd-a85f-05ecd68fa993.jpg",
+        "imported": true
+    },
+    {
+        "id": 463846,
+        "map": "altess-levoire",
+        "lat": 4491.36,
+        "lng": 3814.16,
+        "category": "naytiba",
+        "title": "Hive",
+        "desc": "Shoot the barrels next to the glowing yellow spots to kill it.\n\n_Note: Will not be added to your data bank until later in the game._",
+        "img": "https://media.mapgenie.io/storage/media/4a4d822c-1cb7-472a-b6b2-4541963bfed7.jpg",
+        "imported": true
+    },
+    {
+        "id": 463848,
+        "map": "altess-levoire",
+        "lat": 5090.47,
+        "lng": 3856.55,
+        "category": "naytiba",
+        "title": "Ambush [5 Waves]",
+        "desc": "Begins when you step onto the glass floor.\r\n\r\n**Wave 1:**\r\n- 3x Creeper\r\n\r\n**Wave 2:**\r\n- 2x Infector\r\r\n\r\n**Wave 3:**\r\n- 2x Test Subject\n- 1x Infector\n\n**Wave 4:**\n- Mutated Defiler\n\n**Final Wave:**\n- Defiler",
+        "img": null,
+        "imported": true
+    },
+    {
+        "id": 463856,
+        "map": "altess-levoire",
+        "lat": 4908.59,
+        "lng": 6478.77,
+        "category": "naytiba",
+        "title": "Test Subject",
+        "desc": "Drops from the ceiling when you enter the corridor.",
+        "img": "https://media.mapgenie.io/storage/media/be9e1607-1cbe-49a7-adbc-0f531d84f077.jpg",
+        "imported": true
+    },
+    {
+        "id": 463857,
+        "map": "altess-levoire",
+        "lat": 5620.62,
+        "lng": 6481.93,
+        "category": "naytiba",
+        "title": "3x Test Subject",
+        "desc": "Drop from the ceiling when you're roughly halfway across the walkway.\n\nTwo will appear in front of you, and one will approach from behind.",
+        "img": "https://media.mapgenie.io/storage/media/8ecb7933-93a6-47f7-a884-32bb36b64a4c.jpg",
+        "imported": true
+    },
+    {
+        "id": 463858,
+        "map": "altess-levoire",
+        "lat": 6406.09,
+        "lng": 6485.08,
+        "category": "naytiba",
+        "title": "Infector",
+        "desc": "Appears when you enter the room.",
+        "img": "https://media.mapgenie.io/storage/media/6b543366-8937-42fc-9b1f-092a85854f81.jpg",
+        "imported": true
+    },
+    {
+        "id": 463860,
+        "map": "altess-levoire",
+        "lat": 6846.54,
+        "lng": 5999.69,
+        "category": "naytiba",
+        "title": "4x Test Subject",
+        "desc": "Crawling on the floor all throughout the room.",
+        "img": "https://media.mapgenie.io/storage/media/10f02a4b-4596-412f-b5d0-690dfc13e9b5.jpg",
+        "imported": true
+    },
+    {
+        "id": 463862,
+        "map": "altess-levoire",
+        "lat": 6790.58,
+        "lng": 6088.06,
+        "category": "naytiba",
+        "title": "Infector",
+        "desc": "Sitting in the corner.",
+        "img": "https://media.mapgenie.io/storage/media/e45921b2-c860-4003-8702-cb5709d6ab86.jpg",
+        "imported": true
+    },
+    {
+        "id": 463864,
+        "map": "altess-levoire",
+        "lat": 6832.55,
+        "lng": 5857.2,
+        "category": "naytiba",
+        "title": "Infector",
+        "desc": "Appears behind you when the [Box] is opened.",
+        "img": "https://media.mapgenie.io/storage/media/40c23977-3b50-4e95-8b63-2d5ace1724c9.jpg",
+        "imported": true
+    },
+    {
+        "id": 463867,
+        "map": "altess-levoire",
+        "lat": 7074.38,
+        "lng": 5836.24,
+        "category": "naytiba",
+        "title": "Mutated Defiler",
+        "desc": "Guarding the power panel in the room at the top of the stairs. Spawns two Test Subjects when killed.",
+        "img": "https://media.mapgenie.io/storage/media/99890aa8-a8d8-4053-8f95-691cc13458bb.jpg",
+        "imported": true
+    },
+    {
+        "id": 463868,
+        "map": "altess-levoire",
+        "lat": 7144.33,
+        "lng": 5881.33,
+        "category": "naytiba",
+        "title": "Infector",
+        "desc": "Falls through the ceiling after the [Power Panel] is activated.",
+        "img": "https://media.mapgenie.io/storage/media/a802f3f3-277b-42ec-805b-0210b5053697.jpg",
+        "imported": true
+    },
+    {
+        "id": 463875,
+        "map": "altess-levoire",
+        "lat": 7221.52,
+        "lng": 4515.99,
+        "category": "naytiba",
+        "title": "2x Infector",
+        "desc": "Lurking next to the doorway.",
+        "img": "https://media.mapgenie.io/storage/media/61866d43-04a6-4d8e-a74d-ebf922dcf7e1.jpg",
+        "imported": true
+    },
+    {
+        "id": 463877,
+        "map": "altess-levoire",
+        "lat": 7254.13,
+        "lng": 4224.37,
+        "category": "naytiba",
+        "title": "3x Creeper",
+        "desc": "Appear when you enter the room.",
+        "img": "https://media.mapgenie.io/storage/media/bcd5192d-b27d-4287-a4c0-bcb07d416305.jpg",
+        "imported": true
+    },
+    {
+        "id": 463880,
+        "map": "altess-levoire",
+        "lat": 7124.47,
+        "lng": 3962.85,
+        "category": "naytiba",
+        "title": "2x Infector",
+        "desc": "Emerge from the room here after you use [Laser Panel #1]",
+        "img": "https://media.mapgenie.io/storage/media/853b9298-956e-47ed-88ce-8da2a3fd20f4.jpg",
+        "imported": true
+    },
+    {
+        "id": 463885,
+        "map": "altess-levoire",
+        "lat": 6559.98,
+        "lng": 4323.01,
+        "category": "naytiba",
+        "title": "2x Mutated Defiler & 2x Infector",
+        "desc": "Lurking behind the door you'll need to open after using [Laser Panel #2].",
+        "img": "https://media.mapgenie.io/storage/media/ba148d13-6c67-4a1a-80d3-e51f856d2fe7.jpg",
+        "imported": true
+    },
+    {
+        "id": 463886,
+        "map": "altess-levoire",
+        "lat": 6609.95,
+        "lng": 4786.53,
+        "category": "naytiba",
+        "title": "Infector",
+        "desc": "Inside a room that unlocks when you activate [Laser Panel #2]",
+        "img": "https://media.mapgenie.io/storage/media/8288e94e-1566-4fc1-9c6a-5cf0df93079b.jpg",
+        "imported": true
+    },
+    {
+        "id": 463894,
+        "map": "altess-levoire",
+        "lat": 6821.57,
+        "lng": 4184.64,
+        "category": "naytiba",
+        "title": "Several Infectors",
+        "desc": "Floating in the various tanks. Harmless unless you point the laser at them for too long.",
+        "img": null,
+        "imported": true
+    },
+    {
+        "id": 463900,
+        "map": "altess-levoire",
+        "lat": 4463,
+        "lng": 3739.65,
+        "category": "naytiba",
+        "title": "Infector",
+        "desc": "Drops from the ceiling behind you when the [Box] is opened.",
+        "img": "https://media.mapgenie.io/storage/media/5e5f3f7d-7a1c-4e17-be69-45a04a11be59.jpg",
+        "imported": true
+    },
+    {
+        "id": 463906,
+        "map": "altess-levoire",
+        "lat": 3518.85,
+        "lng": 983.28,
+        "category": "naytiba",
+        "title": "Mutated Defiler",
+        "desc": "",
+        "img": "https://media.mapgenie.io/storage/media/0a34a270-76b7-4cd5-929b-38f7af58dd0c.jpg",
+        "imported": true
+    },
+    {
+        "id": 463907,
+        "map": "altess-levoire",
+        "lat": 3620.79,
+        "lng": 983.28,
+        "category": "naytiba",
+        "title": "Infector",
+        "desc": "Drops from the ceiling after the [Mutated Defiler] is killed.",
+        "img": "https://media.mapgenie.io/storage/media/75fca49a-a814-48ed-b36d-2583e784fd1c.jpg",
+        "imported": true
+    },
+    {
+        "id": 463850,
+        "map": "altess-levoire",
+        "lat": 6698.39,
+        "lng": 5383.98,
+        "category": "easter_egg",
+        "title": "PlayStation Symbols & Colours",
+        "desc": "The symbols featured in the [Symbol Puzzle] closely resemble PlayStation's iconic green triangle, red circle, blue 'X' and pink square.",
+        "img": null,
+        "imported": true
+    },
+    {
+        "id": 463834,
+        "map": "altess-levoire",
+        "lat": 6869.77,
+        "lng": 5381.5,
+        "category": "miscellaneous",
+        "title": "Symbol Puzzle",
+        "desc": "To cross safely, jump on the blocks highlighted in the screenshot and / or remember the sequence:\n- Triangle\n- Circle\n- X\n- Square",
+        "img": "https://media.mapgenie.io/storage/media/7f276a53-06a7-402f-97a1-06575a0812ed.jpg",
+        "imported": true
+    },
+    {
+        "id": 463836,
+        "map": "altess-levoire",
+        "lat": 6961.96,
+        "lng": 6395.69,
+        "category": "miscellaneous",
+        "title": "Power Panel",
+        "desc": "Unlocks the door on the other end of the pit.",
+        "img": "https://media.mapgenie.io/storage/media/14aaefa5-f151-4d86-b860-54b33e8e5446.jpg",
+        "imported": true
+    },
+    {
+        "id": 463838,
+        "map": "altess-levoire",
+        "lat": 5128.95,
+        "lng": 3632.9,
+        "category": "miscellaneous",
+        "title": "Power Panel",
+        "desc": "Restores power to the elevator in the corner.",
+        "img": "https://media.mapgenie.io/storage/media/ca92daa8-9ee4-42f7-a324-79131523e43b.jpg",
+        "imported": true
+    },
+    {
+        "id": 463843,
+        "map": "altess-levoire",
+        "lat": 6998.18,
+        "lng": 5881.78,
+        "category": "miscellaneous",
+        "title": "Power Panel",
+        "desc": "Opens the door on the other side of the glass.",
+        "img": "https://media.mapgenie.io/storage/media/8ab543b0-c265-4d32-a32d-c06954e68185.jpg",
+        "imported": true
+    },
+    {
+        "id": 463851,
+        "map": "altess-levoire",
+        "lat": 2462.63,
+        "lng": 6432.55,
+        "category": "miscellaneous",
+        "title": "Ammo Replenisher",
+        "desc": "",
+        "img": "https://media.mapgenie.io/storage/media/ba3315ef-185e-4d6e-9480-47780bfa0ee3.jpg",
+        "imported": true
+    },
+    {
+        "id": 463855,
+        "map": "altess-levoire",
+        "lat": 4374.68,
+        "lng": 6431.43,
+        "category": "miscellaneous",
+        "title": "Ammo Replenisher",
+        "desc": "At the bottom of the stairs reached when you jump off the rope.",
+        "img": "https://media.mapgenie.io/storage/media/fd809cba-824a-4792-b957-8ac5f4b9c5fa.jpg",
+        "imported": true
+    },
+    {
+        "id": 463859,
+        "map": "altess-levoire",
+        "lat": 7042.4,
+        "lng": 6555.2,
+        "category": "miscellaneous",
+        "title": "Ammo Replenisher",
+        "desc": "In the corner of the room.",
+        "img": "https://media.mapgenie.io/storage/media/bc8c703c-2abe-4639-a089-1d6a98299aeb.jpg",
+        "imported": true
+    },
+    {
+        "id": 463866,
+        "map": "altess-levoire",
+        "lat": 7178.3,
+        "lng": 6104.97,
+        "category": "miscellaneous",
+        "title": "Ammo Replenisher",
+        "desc": "Behind the half-wall.",
+        "img": "https://media.mapgenie.io/storage/media/4b3f8b6d-d20d-4136-abbe-30a5af1db988.jpg",
+        "imported": true
+    },
+    {
+        "id": 463872,
+        "map": "altess-levoire",
+        "lat": 6869.02,
+        "lng": 4375.31,
+        "category": "miscellaneous",
+        "title": "Fusion Cell",
+        "desc": "Obtained when aiming the final laser reflector at the small machine in front of the generator.",
+        "img": "https://media.mapgenie.io/storage/media/b8400dd1-6562-44c0-99b1-605b713085ef.jpg",
+        "imported": true
+    },
+    {
+        "id": 463873,
+        "map": "altess-levoire",
+        "lat": 6738.74,
+        "lng": 4040.63,
+        "category": "miscellaneous",
+        "title": "Fusion Drive",
+        "desc": "Insert a [Fusion Cell] to power up the nearby elevator.",
+        "img": "https://media.mapgenie.io/storage/media/78d0d971-08aa-4a10-95f9-6b2f4063551f.jpg",
+        "imported": true
+    },
+    {
+        "id": 463874,
+        "map": "altess-levoire",
+        "lat": 7005.68,
+        "lng": 4706.27,
+        "category": "miscellaneous",
+        "title": "Ammo Replenisher",
+        "desc": "Next to the ladder.",
+        "img": "https://media.mapgenie.io/storage/media/81d6a985-7084-4f99-a5d6-7cd936cd3d82.jpg",
+        "imported": true
+    },
+    {
+        "id": 463879,
+        "map": "altess-levoire",
+        "lat": 7140.46,
+        "lng": 4336.19,
+        "category": "miscellaneous",
+        "title": "Laser Panel #1",
+        "desc": "The first of two panels you need to activate to begin the laser puzzle on the floor below.\n\nThe other panel can be found [here]. Use the [Bridge Panel] to reach it.",
+        "img": "https://media.mapgenie.io/storage/media/cd90397f-65ba-4183-8f46-441713d25b5b.jpg",
+        "imported": true
+    },
+    {
+        "id": 463881,
+        "map": "altess-levoire",
+        "lat": 7054.52,
+        "lng": 4034.99,
+        "category": "miscellaneous",
+        "title": "Bridge Panel #1",
+        "desc": "Use the panel here to lower a bridge and reach the other side of the walkway.",
+        "img": "https://media.mapgenie.io/storage/media/15eeeb7c-9b31-443b-9c28-58962af54d13.jpg",
+        "imported": true
+    },
+    {
+        "id": 463882,
+        "map": "altess-levoire",
+        "lat": 6543.75,
+        "lng": 4574.27,
+        "category": "miscellaneous",
+        "title": "Locked Door",
+        "desc": "Opens when you use [Laser Panel #1]",
+        "img": null,
+        "imported": true
+    },
+    {
+        "id": 463884,
+        "map": "altess-levoire",
+        "lat": 6598.83,
+        "lng": 4405.63,
+        "category": "miscellaneous",
+        "title": "Laser Panel #2",
+        "desc": "The second of two panels you need to activate to begin the laser puzzle on the floor below.\n\nThe other panel can be found [here].\n\n_Tip: Use the [Ammo Replenisher] before you use this panel, as several enemies will spawn immediately afterwards!_",
+        "img": "https://media.mapgenie.io/storage/media/6e94db3f-afd7-43bf-99ed-1da1945a4419.jpg",
+        "imported": true
+    },
+    {
+        "id": 463888,
+        "map": "altess-levoire",
+        "lat": 6683.9,
+        "lng": 4708.98,
+        "category": "miscellaneous",
+        "title": "Bridge Panel #2",
+        "desc": "Use the panel here to lower a bridge and reach the other side of the walkway.\n\nOnly works after activating [Laser Panel #2].",
+        "img": "https://media.mapgenie.io/storage/media/e98a9ce6-6bfb-4e16-956d-32a0efec8813.jpg",
+        "imported": true
+    },
+    {
+        "id": 463892,
+        "map": "altess-levoire",
+        "lat": 6945.47,
+        "lng": 4242.41,
+        "category": "miscellaneous",
+        "title": "Laser Reflector #1",
+        "desc": "After activating [Laser Panel #2], you'll find the first reflector next to the laser.\n\nMove and rotate it so the laser is sent towards the southern wall, but be careful not to aim at specimen tanks for too long - the Infectors in them are alive!",
+        "img": "https://media.mapgenie.io/storage/media/597be276-b180-46a0-8314-35c4e26caaae.jpg",
+        "imported": true
+    },
+    {
+        "id": 463893,
+        "map": "altess-levoire",
+        "lat": 6727.62,
+        "lng": 4379.48,
+        "category": "miscellaneous",
+        "title": "Laser Reflector #2",
+        "desc": "Directly left of the Fusion Cell generator.\n\nAfter reflecting the laser with [Laser Reflector #1], move this reflector into its path so the laser goes to the eastern wall.",
+        "img": "https://media.mapgenie.io/storage/media/487ad225-238c-47f1-9f2a-7a973338167b.jpg",
+        "imported": true
+    },
+    {
+        "id": 463895,
+        "map": "altess-levoire",
+        "lat": 6689.65,
+        "lng": 4585.09,
+        "category": "miscellaneous",
+        "title": "Laser Reflector #3",
+        "desc": "Hidden among the specimen tanks a short distance south-west from the entrance door.\n\nAfter redirecting the laser with [Laser Reflector #2], push this reflector in its way so the laser is sent towards the northern wall.",
+        "img": "https://media.mapgenie.io/storage/media/58c16fd9-882c-4ee6-bc3f-40b6f08a4b2e.jpg",
+        "imported": true
+    },
+    {
+        "id": 463896,
+        "map": "altess-levoire",
+        "lat": 6869.52,
+        "lng": 4642.81,
+        "category": "miscellaneous",
+        "title": "Laser Reflector #4",
+        "desc": "A few steps in front of the entrance door.\n\nWith the laser pointing at the northern wall thanks to [Laser Reflector #3], your final task is to reflect it towards the small round machine in front of the large generator.",
+        "img": "https://media.mapgenie.io/storage/media/9df6031b-5721-4b4c-9f8b-a4a5fe182fa1.jpg",
+        "imported": true
+    },
+    {
+        "id": 463898,
+        "map": "altess-levoire",
+        "lat": 4653.26,
+        "lng": 3946.28,
+        "category": "miscellaneous",
+        "title": "Ammo Replenisher",
+        "desc": "Next to the [Camp]",
+        "img": "https://media.mapgenie.io/storage/media/687eed60-355c-40aa-9397-67fa6b2ad612.jpg",
+        "imported": true
+    },
+    {
+        "id": 463901,
+        "map": "altess-levoire",
+        "lat": 4484.86,
+        "lng": 3548.13,
+        "category": "miscellaneous",
+        "title": "Password-Protected Door",
+        "desc": "On your left soon after entering the corridor.\n\nIts password (**μηλαμη**) can be found on the corpse [here].",
+        "img": "https://media.mapgenie.io/storage/media/c8a0279b-718d-40b8-a825-e0b33e79907b.jpg",
+        "imported": true
+    },
+    {
+        "id": 463905,
+        "map": "altess-levoire",
+        "lat": 3394.93,
+        "lng": 1147.41,
+        "category": "miscellaneous",
+        "title": "Ammo Replenisher",
+        "desc": "At the top of the stairs.",
+        "img": "https://media.mapgenie.io/storage/media/e9e83c05-4463-4f77-808b-959da940cfe8.jpg",
+        "imported": true
+    },
+    {
+        "id": 463910,
+        "map": "altess-levoire",
+        "lat": 3654.77,
+        "lng": 1729.98,
+        "category": "miscellaneous",
+        "title": "Ammo Replenisher",
+        "desc": "At the edge of the camp.",
+        "img": "https://media.mapgenie.io/storage/media/4ca7c4d4-d1f5-43c6-b366-7498be589657.jpg",
+        "imported": true
+    }
+];
+</script>
+
+<script>
+// =========================================================================
+// НАСТРОЙКИ ТЕКУЩЕЙ КАРТЫ
+// =========================================================================
+const CURRENT_MAP_CONFIG = {
+    id: "altess-levoire",
+    name: "Атлесс Левуар (Altess Levoire)",
+    htmlFile: "altess_levoire.html",
+    image: "maps/altess-levoire.png",
+    width: 768,
+    height: 780,
+    sourceWidth: 8192,
+    sourceHeight: 8192
+};
+
+// Изолированные ключи памяти браузера ТОЛЬКО для этой карты (чтобы карты никогда не смешивались!)
+const STORAGE_KEY_MARKERS    = `sb_markers_${CURRENT_MAP_CONFIG.id}`;
+const STORAGE_KEY_FOUND      = `sb_found_${CURRENT_MAP_CONFIG.id}`;
+const STORAGE_KEY_CHECKPOINT = `sb_checkpoint_${CURRENT_MAP_CONFIG.id}`;
+
+const CATEGORIES = {
+    camp:{name:"Лагерь (Camp)",iconClass:"icon-camp",color:"#27ae60"},
+    fast_travel:{name:"Быстрое перемещение",iconClass:"icon-fast_travel",color:"#2ecc71"},
+    safehouse:{name:"Убежище (Safehouse)",iconClass:"icon-safehouse",color:"#16a085"},
+    can:{name:"Банка (Can)",iconClass:"icon-can",color:"#e74c3c"},
+    nano_suit:{name:"Нанокостюм (Nano Suit)",iconClass:"icon-nano_suit",color:"#9b59b6"},
+    exospine:{name:"Экзохребет (Exospine)",iconClass:"icon-exospine",color:"#d35400"},
+    gear:{name:"Модуль (Gear)",iconClass:"icon-gear",color:"#e67e22"},
+    body_core:{name:"Ядро тела (Body Core)",iconClass:"icon-body_core",color:"#2980b9"},
+    beta_core:{name:"Бета-ядро (Beta Core)",iconClass:"icon-beta_core",color:"#3498db"},
+    weapon_core:{name:"Ядро оружия (Weapon Core)",iconClass:"icon-weapon_core",color:"#c0392b"},
+    tumbler_expansion_module:{name:"Расширение фляги (Tumbler)",iconClass:"icon-tumbler_expansion_module",color:"#1abc9c"},
+    drone_upgrade_module:{name:"Модуль улучшения дрона",iconClass:"icon-drone_upgrade_module",color:"#00cec9"},
+    omnibolt:{name:"Омниболт (Omnibolt)",iconClass:"icon-omnibolt",color:"#f39c12"},
+    box:{name:"Ящик / Сундук (Box)",iconClass:"icon-box",color:"#d68910"},
+    passcode:{name:"Пароль / Код (Passcode)",iconClass:"icon-passcode",color:"#f1c40f"},
+    memory_stick:{name:"Флешка (Memory Stick)",iconClass:"icon-memory_stick",color:"#546de5"},
+    data_bank:{name:"Банк данных (Data Bank)",iconClass:"icon-data_bank",color:"#546de5"},
+    lost_song:{name:"Забытая песня (Lost Song)",iconClass:"icon-lost_song",color:"#e056fd"},
+    boss:{name:"Босс (Boss)",iconClass:"icon-boss",color:"#b71540"},
+    naytiba:{name:"Элитный Найтиба (Naytiba)",iconClass:"icon-naytiba",color:"#eb2f06"},
+    main_quest:{name:"Сюжетное задание",iconClass:"icon-main_quest",color:"#f6b93b"},
+    side_quest:{name:"Побочное задание",iconClass:"icon-side_quest",color:"#4a69bd"},
+    bulletin_board:{name:"Доска объявлений",iconClass:"icon-bulletin_board",color:"#60a3bc"},
+    bulletin_board_request:{name:"Запрос с доски",iconClass:"icon-bulletin_board_request",color:"#3c6382"},
+    mission_item:{name:"Квестовый предмет",iconClass:"icon-mission_item",color:"#fa983a"},
+    vendor:{name:"Торговец (Vendor)",iconClass:"icon-vendor",color:"#78e08f"},
+    fish:{name:"Рыбалка (Fish)",iconClass:"icon-fish",color:"#0a3d62"},
+    stellar_tear:{name:"Звездная слеза (Stellar Tear)",iconClass:"icon-stellar_tear",color:"#686de0"},
+    photo_spot:{name:"Фото-точка (Photo Spot)",iconClass:"icon-photo_spot",color:"#ff7979"},
+    earrings:{name:"Серьги (Earrings)",iconClass:"icon-earrings",color:"#badc58"},
+    face_decoration:{name:"Украшение лица",iconClass:"icon-face_decoration",color:"#f9ca24"},
+    hairstyle:{name:"Прическа (Hairstyle)",iconClass:"icon-hairstyle",color:"#f0932b"},
+    adams_clothes:{name:"Одежда Адама",iconClass:"icon-adams_clothes",color:"#95afc0"},
+    lilys_clothes:{name:"Одежда Лили",iconClass:"icon-lilys_clothes",color:"#ffbe76"},
+    drone_appearance:{name:"Облик дрона",iconClass:"icon-drone_appearance",color:"#7ed6df"},
+    point_of_interest:{name:"Точка интереса (POI)",iconClass:"icon-point_of_interest",color:"#636e72"},
+    transition:{name:"Переход между зонами",iconClass:"icon-transition",color:"#2d3436"},
+    traversal:{name:"Препятствие / Путь",iconClass:"icon-traversal",color:"#718093"},
+    easter_egg:{name:"Пасхалка (Easter Egg)",iconClass:"icon-easter_egg",color:"#8c7ae6"},
+    miscellaneous:{name:"Разное (Misc)",iconClass:"icon-miscellaneous",color:"#576574"}
+};
+
+let addMode = false;
+let mapInstance = null;
+let imageOverlay = null;
+const markersLayer = L.layerGroup();
+let markersData = loadJSON(STORAGE_KEY_MARKERS, []);
+let foundIds = loadJSON(STORAGE_KEY_FOUND, []);
+let activeCategories = Object.keys(CATEGORIES).reduce((acc,key)=>({...acc,[key]:true}),{});
+const auth = firebase.auth();
+
+function loadJSON(key, fallback) {
+    try {
+        const parsed = JSON.parse(localStorage.getItem(key));
+        return parsed ?? fallback;
+    } catch (_) {
+        return fallback;
+    }
+}
+
+function toggleSidebar() {
+    const sidebar = document.getElementById("sidebar");
+    const btn = document.getElementById("sidebar-toggle-btn");
+    const isCollapsed = sidebar.classList.toggle("collapsed");
+    btn.textContent = isCollapsed ? "▶" : "◀";
+    setTimeout(() => {
+        if (mapInstance) mapInstance.invalidateSize();
+    }, 320);
+}
+
+if (window.matchMedia("(max-width: 700px)").matches) {
+    document.getElementById("sidebar").classList.add("collapsed");
+    document.getElementById("sidebar-toggle-btn").textContent = "▶";
+}
+
+const EMBEDDED_MARKERS = (window.EMBEDDED_MARKERS || []).map(marker => ({
+    ...marker,
+    lat: Number((marker.lat * CURRENT_MAP_CONFIG.height / CURRENT_MAP_CONFIG.sourceHeight).toFixed(2)),
+    lng: Number((marker.lng * CURRENT_MAP_CONFIG.width / CURRENT_MAP_CONFIG.sourceWidth).toFixed(2))
+}));
+
+function sanitizeMarkersList(list) {
+    return list
+        .filter(marker => marker && typeof marker === "object" && Number.isFinite(Number(marker.lat)) && Number.isFinite(Number(marker.lng)))
+        .map(marker => ({
+            ...marker,
+            id: marker.id ?? makeUniqueId(),
+            map: CURRENT_MAP_CONFIG.id,
+            lat: Number(marker.lat),
+            lng: Number(marker.lng),
+            category: CATEGORIES[marker.category] ? marker.category : "miscellaneous",
+            title: String(marker.title || CATEGORIES[marker.category]?.name || "Импортированная метка"),
+            desc: String(marker.desc || "")
+        }));
+}
+
+function normalizeFoundIds(ids) {
+    const markerIds = new Map(markersData.map(marker => [String(marker.id), marker.id]));
+    return Array.from(new Set(ids.map(id => markerIds.get(String(id)) ?? id)));
+}
+
+function setCloudSyncStatus(text) {
+    const status = document.getElementById("cloud-sync-status");
+    if (status) status.textContent = text;
+}
+
+async function loadPreboundMarkers() {
+    if (Array.isArray(EMBEDDED_MARKERS) && EMBEDDED_MARKERS.length > 0) {
+        markersData = sanitizeMarkersList(EMBEDDED_MARKERS);
+        foundIds = normalizeFoundIds(foundIds);
+        saveMarkers();
+        renderMarkers();
+        renderFilters();
+        return;
+    }
+
+    if (CURRENT_MAP_CONFIG.markersFile) {
+        const rawName = CURRENT_MAP_CONFIG.markersFile;
+        // Пробуем разные варианты кодирования пробелов и восклицательного знака для GitHub Pages
+        const urlsToTry = [
+            rawName,
+            encodeURI(rawName),
+            encodeURIComponent(rawName).replace(/!/g, "%21"),
+            "./" + rawName.replace(/ /g, "%20").replace(/!/g, "%21")
+        ];
+
+        for (const url of urlsToTry) {
+            try {
+                const response = await fetch(url + "?v=" + Date.now(), { cache: "no-store" });
+                if (response.ok) {
+                    const json = await response.json();
+                    const list = Array.isArray(json) ? json : json.markers;
+                    if (Array.isArray(list) && list.length > 0) {
+                        const fileMarkers = sanitizeMarkersList(list);
+                        const cached = loadJSON(STORAGE_KEY_MARKERS, []);
+                        const customUserMarkers = Array.isArray(cached) ? cached.filter(marker => marker && marker.imported === false) : [];
+                        markersData = fileMarkers.concat(customUserMarkers);
+                        foundIds = normalizeFoundIds(foundIds);
+                        saveMarkers();
+                        renderMarkers();
+                        renderFilters();
+                        console.log(`✅ Загружено ${fileMarkers.length} меток из ${url}`);
+                        return;
+                    }
+                }
+            } catch (err) {
+                // Пробуем следующий вариант URL
+            }
+        }
+        console.error("❌ Не удалось найти JSON-файл ни по одному пути:", urlsToTry);
+    }
+
+    const cached = loadJSON(STORAGE_KEY_MARKERS, []);
+    if (Array.isArray(cached) && cached.length > 0) {
+        markersData = sanitizeMarkersList(cached);
+        foundIds = normalizeFoundIds(foundIds);
+        renderMarkers();
+        renderFilters();
+    }
+}
+
+async function reloadDefaultMarkersFromFile() {
+    if (!confirm("Перезагрузить все метки из исходного файла карты?")) return;
+    localStorage.removeItem(STORAGE_KEY_MARKERS);
+    await loadPreboundMarkers();
+    renderMarkers();
+    renderFilters();
+    showStatus("✅ Метки перезагружены из файла карты!");
+}
+
+auth.onAuthStateChanged(user => {
+    const statusEl = document.getElementById("auth-status");
+    const btnEl = document.getElementById("auth-btn");
+    const avatarEl = document.getElementById("auth-avatar");
+
+    if (user) {
+        statusEl.innerHTML = `<b>${escapeHtml(user.displayName || user.email || "Google")}</b><br><span style="color:#50e3c2;">● Облако активно</span>`;
+        btnEl.textContent = "🚪 Выйти";
+        btnEl.className = "auth-mini-btn";
+        btnEl.style.background = "#5c2828";
+        if (user.photoURL) {
+            avatarEl.src = user.photoURL;
+            avatarEl.style.display = "block";
+        }
+    } else {
+        statusEl.innerHTML = "<b>Локальный режим</b><br><span>Синхронизация выключена</span>";
+        btnEl.textContent = "🔑 Google";
+        btnEl.className = "primary auth-mini-btn";
+        btnEl.style.background = "";
+        avatarEl.style.display = "none";
+    }
+});
+
+function toggleGoogleAuth() {
+    if (auth.currentUser) {
+        auth.signOut();
+        return;
+    }
+    auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(error => {
+        alert("Ошибка входа через Google: " + error.message);
+    });
+}
+
+function saveProgressToCloud() {
+    if (typeof window.saveMapProgressToCloud === "function") {
+        return window.saveMapProgressToCloud(CURRENT_MAP_CONFIG.id, foundIds);
+    }
+}
+
+async function syncProgressToCloud() {
+    const button = document.getElementById("cloud-sync-btn");
+    button.disabled = true;
+    setCloudSyncStatus("Синхронизация с Google...");
+    try {
+        const ids = await window.syncMapProgressToCloud(
+            CURRENT_MAP_CONFIG.id,
+            () => normalizeFoundIds(foundIds),
+            syncedIds => {
+                foundIds = normalizeFoundIds(syncedIds);
+                localStorage.setItem(STORAGE_KEY_FOUND, JSON.stringify(foundIds));
+                renderMarkers();
+                renderFilters();
+            }
+        );
+        setCloudSyncStatus(`Синхронизировано: ${normalizeFoundIds(ids || foundIds).length} меток.`);
+    } catch (error) {
+        setCloudSyncStatus(`Ошибка синхронизации: ${error.message || "проверьте вход и подключение"}`);
+        console.error("Не удалось синхронизировать прогресс с Google:", error);
+    } finally {
+        button.disabled = false;
+    }
+}
+
+window.addEventListener("keydown", e => {
+    if (e.key === "Control") document.body.classList.add("ctrl-pressed");
+});
+window.addEventListener("keyup", e => {
+    if (e.key === "Control") document.body.classList.remove("ctrl-pressed");
+});
+window.addEventListener("blur", () => document.body.classList.remove("ctrl-pressed"));
+
+async function initMap() {
+    document.getElementById("page-nav-selector").value = CURRENT_MAP_CONFIG.htmlFile;
+
+    mapInstance = L.map("map", {
+        crs: L.CRS.Simple,
+        minZoom: -5,
+        maxZoom: 4,
+        zoomSnap: 0.25,
+        attributionControl: false
+    });
+    markersLayer.addTo(mapInstance);
+    mapInstance.on("click", function(e) {
+        if (addMode) openCreateMarkerPopup(e.latlng.lat,e.latlng.lng);
+    });
+    await loadPreboundMarkers();
+    loadCurrentMapImage();
+    window.connectMapProgressSync(CURRENT_MAP_CONFIG.id, () => foundIds, ids => {
+        foundIds = normalizeFoundIds(ids);
+        localStorage.setItem(STORAGE_KEY_FOUND, JSON.stringify(foundIds));
+        renderMarkers();
+        renderFilters();
+        showStatus(`☁️ Синхронизировано с Google (${foundIds.length} меток)`);
+        setCloudSyncStatus(`Прогресс загружен из Google: ${foundIds.length} меток.`);
+    }, error => {
+        setCloudSyncStatus(`Ошибка загрузки из Google: ${error.message || "проверьте подключение"}`);
+    });
+
+    // Автосохранение в кэш каждые 3 минуты
+    setInterval(autoSaveToBrowserCache, 3 * 60 * 1000);
+    setInterval(saveProgressToCloud, 5 * 1000);
+}
+
+function autoSaveToBrowserCache() {
+    localStorage.setItem(STORAGE_KEY_MARKERS, JSON.stringify(markersData));
+    localStorage.setItem(STORAGE_KEY_FOUND, JSON.stringify(foundIds));
+    saveProgressToCloud();
+    const timeStr = new Date().toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+    const indicator = document.getElementById("autosave-time");
+    if (indicator) indicator.textContent = `(${timeStr})`;
+}
+
+function createFallbackGridUrl(width,height) {
+    const canvas=document.createElement("canvas");
+    canvas.width=1024; canvas.height=Math.round(1024 * (height / width));
+    const ctx=canvas.getContext("2d");
+    ctx.fillStyle="#141923"; ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.strokeStyle="#1e2636"; ctx.lineWidth=2;
+    for(let x=0;x<=canvas.width;x+=64){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,canvas.height);ctx.stroke();}
+    for(let y=0;y<=canvas.height;y+=64){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(canvas.width,y);ctx.stroke();}
+    ctx.fillStyle="#50e3c2";ctx.font="bold 22px sans-serif";ctx.textAlign="center";
+    ctx.fillText(`Положите файл "${CURRENT_MAP_CONFIG.image}" в папку`,canvas.width/2,canvas.height/2);
+    return canvas.toDataURL();
+}
+
+function loadCurrentMapImage() {
+    const cfg = CURRENT_MAP_CONFIG;
+    if (imageOverlay) mapInstance.removeLayer(imageOverlay);
+
+    const candidates = [cfg.image, ...(cfg.altImages || [])];
+    let tryIndex = 0;
+
+    function tryNextImage() {
+        if (tryIndex >= candidates.length) {
+            const bounds = [[0, 0], [cfg.height, cfg.width]];
+            imageOverlay = L.imageOverlay(createFallbackGridUrl(cfg.width, cfg.height), bounds).addTo(mapInstance);
+            mapInstance.fitBounds(bounds);
+            renderMarkers();
+            return;
+        }
+        const candidateSrc = candidates[tryIndex++];
+        const img = new Image();
+        img.onload = function() {
+            if (this.naturalWidth && this.naturalHeight) {
+                cfg.width = this.naturalWidth;
+                cfg.height = this.naturalHeight;
+            }
+            const bounds = [[0, 0], [cfg.height, cfg.width]];
+            imageOverlay = L.imageOverlay(candidateSrc, bounds).addTo(mapInstance);
+            mapInstance.fitBounds(bounds);
+            renderMarkers();
+        };
+        img.onerror = tryNextImage;
+        img.src = candidateSrc;
+    }
+
+    tryNextImage();
+    renderFilters();
+}
+
+function renderMarkers() {
+    markersLayer.clearLayers();
+    const query=document.getElementById("search-input").value.toLowerCase().trim();
+    let foundCount=0;
+
+    markersData.forEach(marker=>{
+        const isFound=foundIds.includes(marker.id);
+        if(isFound) foundCount++;
+        if(!activeCategories[marker.category]) return;
+        if(query && !(marker.title||"").toLowerCase().includes(query) && !(marker.desc||"").toLowerCase().includes(query)) return;
+
+        const cat=CATEGORIES[marker.category]||CATEGORIES.miscellaneous;
+        const iconHtml=`<div class="custom-pin ${isFound?"found":""}" style="background-color:${cat.color};"><span class="${cat.iconClass}"></span></div>`;
+        const customIcon=L.divIcon({html:iconHtml,className:"",iconSize:[28,28],iconAnchor:[14,28],popupAnchor:[0,-28]});
+        const lMarker=L.marker([marker.lat,marker.lng],{icon:customIcon});
+
+        const imgHtml=marker.img
+            ? `<img src="${escapeAttr(marker.img)}" class="popup-img" onclick="window.open(this.src,'_blank')" title="Открыть изображение в полном размере">`
+            : "";
+        const popupHtml=`<div>
+            <div class="popup-cat"><span class="${cat.iconClass}"></span> ${escapeHtml(cat.name)}</div>
+            <div class="popup-title">${escapeHtml(marker.title||cat.name)}</div>
+            ${marker.desc?`<div class="popup-desc">${escapeHtml(marker.desc)}</div>`:""}
+            ${imgHtml}
+            <div class="popup-actions">
+                <button class="btn-found" onclick="toggleFound(${JSON.stringify(marker.id)})">${isFound?"✖ Снять отметку":"✔ Найдено!"}</button>
+                <button class="btn-delete" onclick="deleteMarker(${JSON.stringify(marker.id)})" title="Удалить метку">🗑</button>
+            </div>
+        </div>`;
+
+        lMarker.bindPopup(popupHtml);
+
+        lMarker.on("contextmenu", function(e) {
+            if (e.originalEvent) e.originalEvent.preventDefault();
+            toggleFound(marker.id);
+        });
+
+        lMarker.on("mousedown", function(e) {
+            const orig = e.originalEvent;
+            if (!orig || !orig.ctrlKey || orig.button !== 0) return;
+
+            L.DomEvent.stopPropagation(e);
+            L.DomEvent.preventDefault(e);
+            lMarker.closePopup();
+            mapInstance.dragging.disable();
+
+            function onMouseMove(moveEvent) {
+                lMarker.setLatLng(moveEvent.latlng);
+            }
+
+            function onMouseUp() {
+                mapInstance.off("mousemove", onMouseMove);
+                window.removeEventListener("mouseup", onMouseUp);
+                mapInstance.dragging.enable();
+
+                const newPos = lMarker.getLatLng();
+                marker.lat = Number(newPos.lat.toFixed(2));
+                marker.lng = Number(newPos.lng.toFixed(2));
+                saveMarkers();
+                showStatus(`✅ Позиция метки «${marker.title}» обновлена!`);
+            }
+
+            mapInstance.on("mousemove", onMouseMove);
+            window.addEventListener("mouseup", onMouseUp);
+        });
+
+        markersLayer.addLayer(lMarker);
+    });
+    document.getElementById("progress-counter").textContent=`${foundCount} / ${markersData.length}`;
+}
+
+function escapeHtml(value) {
+    return String(value).replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
+}
+function escapeAttr(value) { return escapeHtml(value); }
+
+function renderFilters() {
+    const container=document.getElementById("filters-container");
+    container.innerHTML="";
+    Object.keys(CATEGORIES).forEach(catKey=>{
+        const cat=CATEGORIES[catKey];
+        const inCat=markersData.filter(m=>m.category===catKey);
+        if(!inCat.length) return;
+        const foundCount=inCat.filter(m=>foundIds.includes(m.id)).length;
+        const isActive=activeCategories[catKey];
+        const div=document.createElement("div");
+        div.className=`filter-item ${isActive?"":"disabled"}`;
+        div.onclick=()=>toggleCategory(catKey,!activeCategories[catKey]);
+        div.innerHTML=`<div class="filter-left"><div class="filter-icon-box" style="background-color:${cat.color};"><span class="${cat.iconClass}"></span></div><span class="cat-label" title="${escapeAttr(cat.name)}">${escapeHtml(cat.name)}</span></div><span class="badge">${foundCount}/${inCat.length}</span>`;
+        container.appendChild(div);
+    });
+}
+
+function shiftAllMarkers(dx,dy) {
+    markersData.forEach(m=>{
+        m.lng=Number((m.lng+dx).toFixed(2));
+        m.lat=Number((m.lat+dy).toFixed(2));
+    });
+    saveMarkers();renderMarkers();
+}
+
+function scaleMarkersAxis(factorX,factorY) {
+    if(!markersData.length) return;
+    const minLat=Math.min(...markersData.map(m=>m.lat));
+    const minLng=Math.min(...markersData.map(m=>m.lng));
+    markersData.forEach(m=>{
+        m.lat=Number((minLat+(m.lat-minLat)*factorY).toFixed(2));
+        m.lng=Number((minLng+(m.lng-minLng)*factorX).toFixed(2));
+    });
+    saveMarkers();renderMarkers();
+}
+
+function toggleCategory(key,state) {
+    activeCategories[key]=state;renderMarkers();renderFilters();
+}
+function setAllCategories(state) {
+    Object.keys(CATEGORIES).forEach(k=>activeCategories[k]=state);
+    renderMarkers();renderFilters();
+}
+function toggleFound(id) {
+    if(foundIds.includes(id)) foundIds=foundIds.filter(x=>x!==id);
+    else foundIds.push(id);
+    localStorage.setItem(STORAGE_KEY_FOUND,JSON.stringify(foundIds));
+    saveProgressToCloud();
+    renderMarkers();renderFilters();
+}
+function deleteMarker(id) {
+    if(!confirm("Удалить эту метку?")) return;
+    markersData=markersData.filter(m=>m.id!==id);
+    foundIds=foundIds.filter(x=>x!==id);
+    saveMarkers();localStorage.setItem(STORAGE_KEY_FOUND,JSON.stringify(foundIds));
+    saveProgressToCloud();
+    renderMarkers();renderFilters();
+}
+function toggleAddMode() {
+    addMode=!addMode;
+    const btn=document.getElementById("toggle-add-btn");
+    if(addMode){btn.classList.add("active-mode");btn.textContent="🎯 Кликните на карту для добавления";document.getElementById("map").style.cursor="crosshair";}
+    else{btn.classList.remove("active-mode");btn.textContent="+ Добавить свою метку на карту";document.getElementById("map").style.cursor="grab";}
+}
+function openCreateMarkerPopup(lat,lng) {
+    const options=Object.keys(CATEGORIES).map(k=>`<option value="${k}">${escapeHtml(CATEGORIES[k].name)}</option>`).join("");
+    const html=`<div><div class="popup-title" style="margin-bottom:8px;">Добавить метку</div>
+        <select id="new-cat">${options}</select>
+        <input type="text" id="new-title" placeholder="Название предмета">
+        <textarea id="new-desc" rows="2" placeholder="Описание..."></textarea>
+        <button class="primary" onclick="saveNewMarker(${lat},${lng})">Сохранить</button></div>`;
+    L.popup().setLatLng([lat,lng]).setContent(html).openOn(mapInstance);
+}
+function saveNewMarker(lat,lng) {
+    const category=document.getElementById("new-cat").value;
+    const title=document.getElementById("new-title").value.trim()||CATEGORIES[category].name;
+    const desc=document.getElementById("new-desc").value.trim();
+    markersData.push({id:makeUniqueId(),map:CURRENT_MAP_CONFIG.id,lat:Number(lat.toFixed(2)),lng:Number(lng.toFixed(2)),category,title,desc,imported:false});
+    saveMarkers();mapInstance.closePopup();renderMarkers();renderFilters();
+}
+function makeUniqueId() {
+    if(window.crypto && crypto.randomUUID) return crypto.randomUUID();
+    return Date.now()+Math.random();
+}
+function saveMarkers() {
+    localStorage.setItem(STORAGE_KEY_MARKERS,JSON.stringify(markersData));
+}
+
+async function saveJsonWithDialog(dataObj, suggestedName) {
+    const jsonString = JSON.stringify(dataObj, null, 2);
+    if (window.showSaveFilePicker) {
+        try {
+            const handle = await window.showSaveFilePicker({
+                suggestedName: suggestedName,
+                types: [{ description: "JSON файл сохранения", accept: { "application/json": [".json"] } }]
+            });
+            const writable = await handle.createWritable();
+            await writable.write(jsonString);
+            await writable.close();
+            showStatus(`✅ Файл «${handle.name}» сохранен!`);
+            return;
+        } catch (err) {
+            if (err.name === "AbortError") return;
+        }
+    }
+    const customName = prompt("Введите имя файла для сохранения:", suggestedName);
+    if (!customName) return;
+    const finalName = customName.endsWith(".json") ? customName : customName + ".json";
+    const blob = new Blob([jsonString], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = finalName; a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function exportData() {
+    saveJsonWithDialog({markers:markersData,found:foundIds}, `stellar_blade_${CURRENT_MAP_CONFIG.id}_data.json`);
+}
+
+// ИСПРАВЛЕННЫЙ ИМПОРТ: Все импортируемые метки принудительно привязываются к текущей открытой HTML-карте!
+function importData(event) {
+    const file=event.target.files && event.target.files[0];
+    if(!file) return;
+    const reader=new FileReader();
+    reader.onload=function(e){
+        try {
+            const imported=JSON.parse(e.target.result);
+            const rawList = Array.isArray(imported) ? imported : imported.markers;
+            if(!Array.isArray(rawList)) throw new Error("В JSON нет массива меток (markers).");
+
+            let validMarkers=rawList.map((m,index)=>{
+                if(!m || typeof m!=="object" || !Number.isFinite(Number(m.lat)) || !Number.isFinite(Number(m.lng))) {
+                    throw new Error(`Некорректные координаты у метки ${index+1}.`);
+                }
+                return {
+                    ...m,
+                    id:m.id ?? makeUniqueId(),
+                    // Принудительно привязываем импортированные метки к текущей карте.
+                    map:CURRENT_MAP_CONFIG.id,
+                    lat:Number(m.lat),
+                    lng:Number(m.lng),
+                    category:CATEGORIES[m.category]?m.category:"miscellaneous",
+                    title:String(m.title||CATEGORIES[m.category]?.name||"Импортированная метка"),
+                    desc:String(m.desc||""),
+                    imported:true,
+                    _importBaseLat:Number(m.lat),
+                    _importBaseLng:Number(m.lng)
+                };
+            });
+
+            // Если координаты в файле маленькие (например до 1500), а картинка карты огромная (например 4000+ или 8000+),
+            // автоматически растягиваем координаты под реальный размер текущей картинки карты!
+            const maxLat = Math.max(...validMarkers.map(m => m.lat));
+            const maxLng = Math.max(...validMarkers.map(m => m.lng));
+            const cfg = CURRENT_MAP_CONFIG;
+            if (cfg.width > 1800 && maxLat <= 1500 && maxLng <= 1500) {
+                const scaleX = cfg.width / 1024;
+                const scaleY = cfg.height / 1024;
+                validMarkers.forEach(m => {
+                    m.lat = Number((m.lat * scaleY).toFixed(2));
+                    m.lng = Number((m.lng * scaleX).toFixed(2));
+                    m._importBaseLat = m.lat;
+                    m._importBaseLng = m.lng;
+                });
+            }
+
+            // Оставляем ручные метки этой карты и заменяем только импортированные
+            markersData = markersData.filter(m => !m.imported).concat(validMarkers);
+            if(Array.isArray(imported.found)) foundIds = Array.from(new Set([...foundIds, ...imported.found]));
+            saveMarkers();
+            localStorage.setItem(STORAGE_KEY_FOUND, JSON.stringify(foundIds));
+            saveProgressToCloud();
+            renderMarkers();renderFilters();
+            alert(`Успешно импортировано меток на карту «${CURRENT_MAP_CONFIG.name}»: ${validMarkers.length}!`);
+        } catch(err) {
+            alert("Ошибка чтения JSON: "+(err.message||"неверный формат файла"));
+        } finally {
+            event.target.value="";
+        }
+    };
+    reader.readAsText(file);
+}
+
+function buildProgressPayload() {
+    return {
+        app: "stellar_blade_map_progress",
+        map: CURRENT_MAP_CONFIG.id,
+        updatedAt: new Date().toISOString(),
+        foundCount: foundIds.length,
+        found: foundIds
+    };
+}
+
+function exportFoundProgress() {
+    saveJsonWithDialog(buildProgressPayload(), `stellar_blade_${CURRENT_MAP_CONFIG.id}_progress.json`);
+}
+
+function importFoundProgress(event) {
+    const file = event.target.files && event.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const data = JSON.parse(e.target.result);
+            const list = Array.isArray(data) ? data : (Array.isArray(data.found) ? data.found : null);
+            if(!list) throw new Error("Файл не содержит список выполненных меток (found).");
+            foundIds = Array.from(new Set([...foundIds, ...list]));
+            localStorage.setItem(STORAGE_KEY_FOUND, JSON.stringify(foundIds));
+            saveProgressToCloud();
+            renderMarkers();renderFilters();
+            alert(`Прогресс загружен! Всего отмечено: ${foundIds.length}.`);
+        } catch(err) {
+            alert("Ошибка загрузки прогресса: " + (err.message || "неверный файл"));
+        } finally {
+            event.target.value = "";
+        }
+    };
+    reader.readAsText(file);
+}
+
+function showStatus(text) {
+    const el = document.getElementById("status-msg");
+    if (!el) return;
+    el.style.display = "block";
+    el.textContent = text;
+}
+
+function saveQuickCheckpoint() {
+    const payload = buildProgressPayload();
+    localStorage.setItem(STORAGE_KEY_CHECKPOINT, JSON.stringify(payload));
+    saveJsonWithDialog(payload, `stellar_blade_${CURRENT_MAP_CONFIG.id}_checkpoint.json`);
+}
+
+function loadQuickCheckpoint() {
+    const raw = localStorage.getItem(STORAGE_KEY_CHECKPOINT);
+    if(!raw) { alert("Быстрый сейв в кэше для этой карты пока не создан."); return; }
+    try {
+        const data = JSON.parse(raw);
+        if(Array.isArray(data.found)) {
+            foundIds = data.found;
+            localStorage.setItem(STORAGE_KEY_FOUND, JSON.stringify(foundIds));
+            saveProgressToCloud();
+            renderMarkers();renderFilters();
+            showStatus(`✅ Восстановлено выполненных меток: ${foundIds.length}`);
+        }
+    } catch(_) {
+        alert("Ошибка чтения быстрого сейва.");
+    }
+}
+
+function resetFoundProgress() {
+    if(!confirm("Сбросить все отметки выполненных меток на этой карте?")) return;
+    foundIds = [];
+    localStorage.setItem(STORAGE_KEY_FOUND, JSON.stringify(foundIds));
+    saveProgressToCloud();
+    renderMarkers();renderFilters();
+}
+
+function getShiftStep() {
+    const value=Number(document.getElementById("shift-step").value);
+    if(!Number.isFinite(value)||value<=0){alert("Шаг сдвига должен быть больше нуля.");return null;}
+    return value;
+}
+function shiftImported(dx,dy) {
+    const step=getShiftStep();if(step===null)return;
+    const list=markersData.filter(m=>m.imported);
+    if(!list.length){alert("На этой локации нет импортированных меток.");return;}
+    list.forEach(m=>{
+        m.lng=Number((m.lng+dx*step).toFixed(2));
+        m.lat=Number((m.lat+dy*step).toFixed(2));
+    });
+    saveMarkers();renderMarkers();
+}
+function mirrorImportedX() {
+    const cfg=CURRENT_MAP_CONFIG;
+    const list=markersData.filter(m=>m.imported);
+    if(!list.length){alert("Нет импортированных меток для отражения.");return;}
+    list.forEach(m=>m.lng=Number((cfg.width-m.lng).toFixed(2)));
+    saveMarkers();renderMarkers();
+}
+function mirrorImportedY() {
+    const cfg=CURRENT_MAP_CONFIG;
+    const list=markersData.filter(m=>m.imported);
+    if(!list.length){alert("Нет импортированных меток для отражения.");return;}
+    list.forEach(m=>m.lat=Number((cfg.height-m.lat).toFixed(2)));
+    saveMarkers();renderMarkers();
+}
+function resetImportedTransforms() {
+    const list=markersData.filter(m=>m.imported && Number.isFinite(m._importBaseLat) && Number.isFinite(m._importBaseLng));
+    if(!list.length){alert("Нет исходных координат для сброса.");return;}
+    list.forEach(m=>{m.lat=m._importBaseLat;m.lng=m._importBaseLng;});
+    saveMarkers();renderMarkers();
+}
+function deleteImportedMarkers() {
+    const list=markersData.filter(m=>m.imported);
+    if(!list.length){alert("На этой локации нет импортированных меток.");return;}
+    if(!confirm(`Удалить ${list.length} импортированных меток с этой карты?`))return;
+    const ids=new Set(list.map(m=>m.id));
+    markersData=markersData.filter(m=>!m.imported);
+    foundIds=foundIds.filter(id=>!ids.has(id));
+    saveMarkers();localStorage.setItem(STORAGE_KEY_FOUND,JSON.stringify(foundIds));
+    saveProgressToCloud();
+    renderMarkers();renderFilters();
+}
+
+document.getElementById("search-input").addEventListener("input",renderMarkers);
+document.getElementById("import-file").addEventListener("change",importData);
+document.getElementById("import-found-file").addEventListener("change",importFoundProgress);
+window.onload=initMap;
+</script>
 </body>
 </html>
