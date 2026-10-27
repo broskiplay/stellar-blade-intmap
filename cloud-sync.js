@@ -14,6 +14,9 @@
     const auth = firebase.auth();
     const db = firebase.firestore();
     const mapStates = new Map();
+    const persistenceReady = db.enablePersistence({ synchronizeTabs: true }).catch(error => {
+        console.warn("Постоянный кэш Firestore недоступен:", error);
+    });
 
     function progressRef(user, mapId) {
         return db.collection("users").doc(user.uid).collection("mapProgress").doc(mapId);
@@ -37,12 +40,31 @@
         return [];
     }
 
+    function isOfflineError(error) {
+        return error?.code === "unavailable" || /client is offline/i.test(error?.message || "");
+    }
+
+    async function readProgress(ref) {
+        await persistenceReady;
+        try {
+            return await ref.get();
+        } catch (error) {
+            if (!isOfflineError(error)) throw error;
+            return ref.get({ source: "cache" });
+        }
+    }
+
+    function reportError(state, message, error) {
+        console.warn(message, error);
+        if (state.onError) state.onError(error);
+    }
+
     async function synchronizeProgress(user, mapId, state, forceWrite = false) {
         if (state.syncPromise) return state.syncPromise;
 
         const syncPromise = (async () => {
             const ref = progressRef(user, mapId);
-            const snapshot = await ref.get();
+            const snapshot = await readProgress(ref);
             if (mapStates.get(mapId) !== state || auth.currentUser?.uid !== user.uid) return null;
 
             const mergedIds = uniqueIds([...state.getLocalIds(), ...cloudIdsFromSnapshot(snapshot)]);
@@ -83,8 +105,7 @@
             if (!user) return;
 
             synchronizeProgress(user, mapId, state).catch(error => {
-                console.error("Не удалось загрузить прогресс из Google Cloud Firestore:", error);
-                if (state.onError) state.onError(error);
+                reportError(state, "Не удалось загрузить прогресс из Google Cloud Firestore:", error);
             });
         });
     };
@@ -93,11 +114,11 @@
         const user = auth.currentUser;
         const state = mapStates.get(mapId);
         if (!user || !state || state.uid !== user.uid) return;
+        if (typeof navigator !== "undefined" && !navigator.onLine) return;
 
         if (!state.ready) {
             return synchronizeProgress(user, mapId, state).catch(error => {
-                console.error("Не удалось загрузить прогресс из Google Cloud Firestore:", error);
-                if (state.onError) state.onError(error);
+                reportError(state, "Не удалось загрузить прогресс из Google Cloud Firestore:", error);
             });
         }
 
@@ -111,8 +132,7 @@
         }).then(() => {
             state.lastSavedKey = idsKey;
         }).catch(error => {
-            console.error("Не удалось сохранить прогресс в Google Cloud Firestore:", error);
-            if (state.onError) state.onError(error);
+            reportError(state, "Не удалось сохранить прогресс в Google Cloud Firestore:", error);
         });
     };
 
@@ -130,4 +150,22 @@
         state.applyIds = applyIds;
         return synchronizeProgress(user, mapId, state, true);
     };
+
+    window.addEventListener("offline", () => {
+        const error = new Error("Нет подключения к сети. Прогресс сохранён локально и будет синхронизирован после подключения.");
+        for (const state of mapStates.values()) {
+            if (state.onError) state.onError(error);
+        }
+    });
+
+    window.addEventListener("online", () => {
+        const user = auth.currentUser;
+        if (!user) return;
+        for (const [mapId, state] of mapStates) {
+            if (state.uid !== user.uid) continue;
+            synchronizeProgress(user, mapId, state).catch(error => {
+                reportError(state, "Не удалось повторно синхронизировать прогресс:", error);
+            });
+        }
+    });
 })();
