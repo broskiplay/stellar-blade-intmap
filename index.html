@@ -104,6 +104,14 @@ details.game-dropdown[open] .game-arrow { transform: rotate(180deg); }
     background: #283244; border-color: #50e3c2; color: #50e3c2; transform: translateX(4px);
 }
 .map-link span.status { font-size: 11px; color: #8a99ad; font-weight: normal; }
+@media (max-width: 480px) {
+    body { min-height: 100dvh; justify-content: flex-start; padding: 28px 14px 20px; }
+    .home-title { font-size: 25px; letter-spacing: 1px; }
+    .social-links { flex-wrap: wrap; }
+    .auth-card { padding: 12px; gap: 8px; }
+    .auth-btn { min-height: 44px; padding: 8px 10px; }
+    .map-link { min-height: 48px; }
+}
 </style>
 </head>
 <body>
