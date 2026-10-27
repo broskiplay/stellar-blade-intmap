@@ -319,6 +319,7 @@ const CURRENT_MAP_CONFIG = {
     id: "eidos7",                          // Уникальный ID карты (например: "xion", "eidos7", "wasteland")
     name: "Эйдос 7 (Eidos 7)",                // Название карты
     htmlFile: "eidos7.html",               // Имя этого HTML-файла для выпадающего списка
+    markersFile: "!metki eidos-7 FINAL.json",
     image: "maps/eidos-7.png",              // Путь к картинке карты
     altImages: ["eidos-7.png", "maps/eidos7.png"],
     width: 8194,                         // Ширина по умолчанию (автоматически обновится при загрузке картинки)
@@ -400,6 +401,75 @@ function toggleSidebar() {
     }, 320);
 }
 
+const EMBEDDED_MARKERS = window.EMBEDDED_MARKERS || [];
+
+function sanitizeMarkersList(list) {
+    return list
+        .filter(marker => marker && typeof marker === "object" && Number.isFinite(Number(marker.lat)) && Number.isFinite(Number(marker.lng)))
+        .map(marker => ({
+            ...marker,
+            id: marker.id ?? makeUniqueId(),
+            map: CURRENT_MAP_CONFIG.id,
+            lat: Number(marker.lat),
+            lng: Number(marker.lng),
+            category: CATEGORIES[marker.category] ? marker.category : "miscellaneous",
+            title: String(marker.title || CATEGORIES[marker.category]?.name || "Импортированная метка"),
+            desc: String(marker.desc || "")
+        }));
+}
+
+async function loadPreboundMarkers() {
+    if (Array.isArray(EMBEDDED_MARKERS) && EMBEDDED_MARKERS.length > 0) {
+        markersData = sanitizeMarkersList(EMBEDDED_MARKERS);
+        saveMarkers();
+        renderMarkers();
+        renderFilters();
+        return;
+    }
+
+    if (CURRENT_MAP_CONFIG.markersFile) {
+        const rawName = CURRENT_MAP_CONFIG.markersFile;
+        // Пробуем разные варианты кодирования пробелов и восклицательного знака для GitHub Pages
+        const urlsToTry = [
+            rawName,
+            encodeURI(rawName),
+            encodeURIComponent(rawName).replace(/!/g, "%21"),
+            "./" + rawName.replace(/ /g, "%20").replace(/!/g, "%21")
+        ];
+
+        for (const url of urlsToTry) {
+            try {
+                const response = await fetch(url + "?v=" + Date.now(), { cache: "no-store" });
+                if (response.ok) {
+                    const json = await response.json();
+                    const list = Array.isArray(json) ? json : json.markers;
+                    if (Array.isArray(list) && list.length > 0) {
+                        const fileMarkers = sanitizeMarkersList(list);
+                        const cached = loadJSON(STORAGE_KEY_MARKERS, []);
+                        const customUserMarkers = Array.isArray(cached) ? cached.filter(marker => marker && marker.imported === false) : [];
+                        markersData = fileMarkers.concat(customUserMarkers);
+                        saveMarkers();
+                        renderMarkers();
+                        renderFilters();
+                        console.log(`✅ Загружено ${fileMarkers.length} меток из ${url}`);
+                        return;
+                    }
+                }
+            } catch (err) {
+                // Пробуем следующий вариант URL
+            }
+        }
+        console.error("❌ Не удалось найти JSON-файл ни по одному пути:", urlsToTry);
+    }
+
+    const cached = loadJSON(STORAGE_KEY_MARKERS, []);
+    if (Array.isArray(cached) && cached.length > 0) {
+        markersData = sanitizeMarkersList(cached);
+        renderMarkers();
+        renderFilters();
+    }
+}
+
 window.addEventListener("keydown", e => {
     if (e.key === "Control") document.body.classList.add("ctrl-pressed");
 });
@@ -422,6 +492,7 @@ function initMap() {
     mapInstance.on("click", function(e) {
         if (addMode) openCreateMarkerPopup(e.latlng.lat,e.latlng.lng);
     });
+    loadPreboundMarkers();
     loadCurrentMapImage();
 
     // Автосохранение в кэш каждые 3 минуты
