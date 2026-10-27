@@ -50,7 +50,14 @@
             return await ref.get();
         } catch (error) {
             if (!isOfflineError(error)) throw error;
-            return ref.get({ source: "cache" });
+            try {
+                return await ref.get({ source: "cache" });
+            } catch (cacheError) {
+                if (!isOfflineError(cacheError) && cacheError?.code !== "not-found") throw cacheError;
+                const offlineError = new Error("Нет подключения к Google, и прогресс этой карты ещё не сохранён в локальном кэше. Он останется на устройстве и синхронизируется после восстановления сети.");
+                offlineError.code = "unavailable";
+                throw offlineError;
+            }
         }
     }
 
