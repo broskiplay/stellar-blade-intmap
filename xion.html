@@ -4,6 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Интерактивная карта Stellar Blade by BroskiPlay — Ксион</title>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+<script src="cloud-sync.js"></script>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
@@ -103,6 +107,12 @@ body { display:flex; height:100vh; width:100vw; background:#141923; color:#e0e6e
 }
 .home-back-btn:hover { background:#3a4659; }
 .autosave-indicator { font-size:10.5px; color:#6c7a89; margin-top:8px; display:flex; align-items:center; justify-content:space-between; }
+.auth-mini-box { margin-top:10px; padding:8px 10px; background:#151921; border:1px solid #2e3543; border-radius:6px; display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.auth-mini-info { display:flex; align-items:center; gap:8px; overflow:hidden; }
+.auth-mini-avatar { width:26px; height:26px; border-radius:50%; border:1px solid #50e3c2; display:none; flex-shrink:0; }
+.auth-mini-text { font-size:11px; color:#8a99ad; line-height:1.25; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.auth-mini-text b { color:#e0e6ed; }
+.auth-mini-btn { width:auto !important; margin:0 !important; padding:5px 9px !important; font-size:11px !important; flex-shrink:0; }
 
 .section { padding:10px 16px; border-bottom:1px solid #262c36; }
 select, input[type="text"], input[type="number"], textarea, button { width:100%; padding:7px 10px; background:#252b37; border:1px solid #384152; color:#fff; border-radius:6px; font-size:13px; margin-bottom:6px; }
@@ -195,8 +205,15 @@ body.ctrl-pressed .custom-pin { cursor:move !important; box-shadow:0 0 10px #50e
                 <span>YouTube</span>
             </a>
         </div>
+        <div class="auth-mini-box">
+            <div class="auth-mini-info">
+                <img id="auth-avatar" class="auth-mini-avatar" src="" alt="Аватар пользователя">
+                <div id="auth-status" class="auth-mini-text"><b>Локальный режим</b><br><span>Синхронизация выключена</span></div>
+            </div>
+            <button id="auth-btn" class="primary auth-mini-btn" onclick="toggleGoogleAuth()">🔑 Google</button>
+        </div>
         <div class="autosave-indicator">
-            <span>🔄 Автосохранение в кэш: каждые 3 мин.</span>
+            <span>🔄 Автосохранение: локально + облако</span>
             <span id="autosave-time"></span>
         </div>
     </div>
@@ -264,6 +281,7 @@ body.ctrl-pressed .custom-pin { cursor:move !important; box-shadow:0 0 10px #50e
                         <button onclick="mirrorImportedY()">⇅ Отразить по Y (верх ↔ низ)</button>
                         <button onclick="resetImportedTransforms()">↩ Сбросить сдвиги и отражения</button>
                         <hr style="border-color:#283040;margin:8px 0;">
+                        <button onclick="reloadDefaultMarkersFromFile()" class="primary">🔄 Перезагрузить метки из файла карты</button>
                         <button onclick="deleteImportedMarkers()" style="background:#922b21;border-color:#c0392b;">🗑 Удалить импортированные метки</button>
                     </div>
                 </details>
@@ -320,6 +338,7 @@ const CURRENT_MAP_CONFIG = {
     id: "xion",                          // Уникальный ID памяти
     name: "Ксион (Xion)",                // Название
     htmlFile: "xion.html",               // Имя файла
+    markersFile: "!metki XION FINAL.json",
     image: "maps/xion.png",              // Картинка карты
     altImages: ["xion.png", "maps/xion.jpg"],
     width: 2000,                         // Ширина по умолчанию
@@ -381,6 +400,7 @@ const markersLayer = L.layerGroup();
 let markersData = loadJSON(STORAGE_KEY_MARKERS, []);
 let foundIds = loadJSON(STORAGE_KEY_FOUND, []);
 let activeCategories = Object.keys(CATEGORIES).reduce((acc,key)=>({...acc,[key]:true}),{});
+const auth = firebase.auth();
 
 function loadJSON(key, fallback) {
     try {
@@ -401,6 +421,122 @@ function toggleSidebar() {
     }, 320);
 }
 
+const EMBEDDED_MARKERS = window.EMBEDDED_MARKERS || [];
+
+function sanitizeMarkersList(list) {
+    return list
+        .filter(marker => marker && typeof marker === "object" && Number.isFinite(Number(marker.lat)) && Number.isFinite(Number(marker.lng)))
+        .map(marker => ({
+            ...marker,
+            id: marker.id ?? makeUniqueId(),
+            map: CURRENT_MAP_CONFIG.id,
+            lat: Number(marker.lat),
+            lng: Number(marker.lng),
+            category: CATEGORIES[marker.category] ? marker.category : "miscellaneous",
+            title: String(marker.title || CATEGORIES[marker.category]?.name || "Импортированная метка"),
+            desc: String(marker.desc || "")
+        }));
+}
+
+async function loadPreboundMarkers() {
+    if (Array.isArray(EMBEDDED_MARKERS) && EMBEDDED_MARKERS.length > 0) {
+        markersData = sanitizeMarkersList(EMBEDDED_MARKERS);
+        saveMarkers();
+        renderMarkers();
+        renderFilters();
+        return;
+    }
+
+    if (CURRENT_MAP_CONFIG.markersFile) {
+        const rawName = CURRENT_MAP_CONFIG.markersFile;
+        const urlsToTry = [
+            rawName,
+            encodeURI(rawName),
+            encodeURIComponent(rawName).replace(/!/g, "%21"),
+            "./" + rawName.replace(/ /g, "%20").replace(/!/g, "%21")
+        ];
+
+        for (const url of urlsToTry) {
+            try {
+                const response = await fetch(url + "?v=" + Date.now(), { cache: "no-store" });
+                if (response.ok) {
+                    const json = await response.json();
+                    const list = Array.isArray(json) ? json : json.markers;
+                    if (Array.isArray(list) && list.length > 0) {
+                        const fileMarkers = sanitizeMarkersList(list);
+                        const cached = loadJSON(STORAGE_KEY_MARKERS, []);
+                        const customUserMarkers = Array.isArray(cached) ? cached.filter(marker => marker && marker.imported === false) : [];
+                        markersData = fileMarkers.concat(customUserMarkers);
+                        saveMarkers();
+                        renderMarkers();
+                        renderFilters();
+                        console.log(`✅ Загружено ${fileMarkers.length} меток из ${url}`);
+                        return;
+                    }
+                }
+            } catch (err) {
+                // Пробуем следующий вариант URL
+            }
+        }
+        console.error("❌ Не удалось найти JSON-файл ни по одному пути:", urlsToTry);
+    }
+
+    const cached = loadJSON(STORAGE_KEY_MARKERS, []);
+    if (Array.isArray(cached) && cached.length > 0) {
+        markersData = sanitizeMarkersList(cached);
+        renderMarkers();
+        renderFilters();
+    }
+}
+
+async function reloadDefaultMarkersFromFile() {
+    if (!confirm("Перезагрузить все метки из исходного файла карты?")) return;
+    localStorage.removeItem(STORAGE_KEY_MARKERS);
+    await loadPreboundMarkers();
+    renderMarkers();
+    renderFilters();
+    showStatus("✅ Метки перезагружены из файла карты!");
+}
+
+auth.onAuthStateChanged(user => {
+    const statusEl = document.getElementById("auth-status");
+    const btnEl = document.getElementById("auth-btn");
+    const avatarEl = document.getElementById("auth-avatar");
+
+    if (user) {
+        statusEl.innerHTML = `<b>${escapeHtml(user.displayName || user.email || "Google")}</b><br><span style="color:#50e3c2;">● Облако активно</span>`;
+        btnEl.textContent = "🚪 Выйти";
+        btnEl.className = "auth-mini-btn";
+        btnEl.style.background = "#5c2828";
+        if (user.photoURL) {
+            avatarEl.src = user.photoURL;
+            avatarEl.style.display = "block";
+        }
+    } else {
+        statusEl.innerHTML = "<b>Локальный режим</b><br><span>Синхронизация выключена</span>";
+        btnEl.textContent = "🔑 Google";
+        btnEl.className = "primary auth-mini-btn";
+        btnEl.style.background = "";
+        avatarEl.style.display = "none";
+    }
+});
+
+function toggleGoogleAuth() {
+    if (auth.currentUser) {
+        auth.signOut();
+        return;
+    }
+    auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(error => {
+        alert("Ошибка входа через Google: " + error.message);
+    });
+}
+
+function saveProgressToCloud() {
+    if (typeof window.saveMapProgressToCloud === "function") {
+        return window.saveMapProgressToCloud(CURRENT_MAP_CONFIG.id, foundIds);
+    }
+}
+
 window.addEventListener("keydown", e => {
     if (e.key === "Control") document.body.classList.add("ctrl-pressed");
 });
@@ -409,7 +545,7 @@ window.addEventListener("keyup", e => {
 });
 window.addEventListener("blur", () => document.body.classList.remove("ctrl-pressed"));
 
-function initMap() {
+async function initMap() {
     document.getElementById("page-nav-selector").value = CURRENT_MAP_CONFIG.htmlFile;
 
     mapInstance = L.map("map", {
@@ -423,7 +559,15 @@ function initMap() {
     mapInstance.on("click", function(e) {
         if (addMode) openCreateMarkerPopup(e.latlng.lat,e.latlng.lng);
     });
+    await loadPreboundMarkers();
     loadCurrentMapImage();
+    window.connectMapProgressSync(CURRENT_MAP_CONFIG.id, () => foundIds, ids => {
+        foundIds = ids;
+        localStorage.setItem(STORAGE_KEY_FOUND, JSON.stringify(foundIds));
+        renderMarkers();
+        renderFilters();
+        showStatus(`☁️ Синхронизировано с Google (${foundIds.length} меток)`);
+    });
 
     setInterval(autoSaveToBrowserCache, 3 * 60 * 1000);
 }
@@ -431,6 +575,7 @@ function initMap() {
 function autoSaveToBrowserCache() {
     localStorage.setItem(STORAGE_KEY_MARKERS, JSON.stringify(markersData));
     localStorage.setItem(STORAGE_KEY_FOUND, JSON.stringify(foundIds));
+    saveProgressToCloud();
     const timeStr = new Date().toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
     const indicator = document.getElementById("autosave-time");
     if (indicator) indicator.textContent = `(${timeStr})`;
@@ -607,6 +752,7 @@ function toggleFound(id) {
     if(foundIds.includes(id)) foundIds=foundIds.filter(x=>x!==id);
     else foundIds.push(id);
     localStorage.setItem(STORAGE_KEY_FOUND,JSON.stringify(foundIds));
+    saveProgressToCloud();
     renderMarkers();renderFilters();
 }
 function deleteMarker(id) {
@@ -614,6 +760,7 @@ function deleteMarker(id) {
     markersData=markersData.filter(m=>m.id!==id);
     foundIds=foundIds.filter(x=>x!==id);
     saveMarkers();localStorage.setItem(STORAGE_KEY_FOUND,JSON.stringify(foundIds));
+    saveProgressToCloud();
     renderMarkers();renderFilters();
 }
 function toggleAddMode() {
@@ -727,6 +874,7 @@ function importData(event) {
             if(Array.isArray(imported.found)) foundIds = Array.from(new Set([...foundIds, ...imported.found]));
             saveMarkers();
             localStorage.setItem(STORAGE_KEY_FOUND, JSON.stringify(foundIds));
+            saveProgressToCloud();
             renderMarkers();renderFilters();
             alert(`Успешно импортировано меток на карту «${CURRENT_MAP_CONFIG.name}»: ${validMarkers.length}!`);
         } catch(err) {
@@ -763,6 +911,7 @@ function importFoundProgress(event) {
             if(!list) throw new Error("Файл не содержит список выполненных меток (found).");
             foundIds = Array.from(new Set([...foundIds, ...list]));
             localStorage.setItem(STORAGE_KEY_FOUND, JSON.stringify(foundIds));
+            saveProgressToCloud();
             renderMarkers();renderFilters();
             alert(`Прогресс загружен! Всего отмечено: ${foundIds.length}.`);
         } catch(err) {
@@ -795,6 +944,7 @@ function loadQuickCheckpoint() {
         if(Array.isArray(data.found)) {
             foundIds = data.found;
             localStorage.setItem(STORAGE_KEY_FOUND, JSON.stringify(foundIds));
+            saveProgressToCloud();
             renderMarkers();renderFilters();
             showStatus(`✅ Восстановлено выполненных меток: ${foundIds.length}`);
         }
@@ -807,6 +957,7 @@ function resetFoundProgress() {
     if(!confirm("Сбросить все отметки выполненных меток на этой карте?")) return;
     foundIds = [];
     localStorage.setItem(STORAGE_KEY_FOUND, JSON.stringify(foundIds));
+    saveProgressToCloud();
     renderMarkers();renderFilters();
 }
 
@@ -853,6 +1004,7 @@ function deleteImportedMarkers() {
     markersData=markersData.filter(m=>!m.imported);
     foundIds=foundIds.filter(id=>!ids.has(id));
     saveMarkers();localStorage.setItem(STORAGE_KEY_FOUND,JSON.stringify(foundIds));
+    saveProgressToCloud();
     renderMarkers();renderFilters();
 }
 
