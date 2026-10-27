@@ -54,7 +54,7 @@ python3 -m http.server 8000
 
 ## Ссылки
 
-- [Twitch: Broski](https://www.twitch.tv/broski)
+- [Twitch: BroskiPlay](https://www.twitch.tv/broskiplay)
 - [YouTube: BroskiPlay](https://youtube.com/@broskiplayt)
 - [Поддержать проект на DonationAlerts](https://www.donationalerts.com/r/broskiplay)
 
