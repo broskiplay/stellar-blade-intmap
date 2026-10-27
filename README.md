@@ -1,4 +1,4 @@
-# 🗺 Интерактивные карты Stellar Blade by BroskiPlay
+# 🗺 Интерактивная карта Stellar Blade by BroskiPlay
 
 Фанатский проект сообщества BroskiPlay для исследования локаций Stellar Blade, поиска коллекционных предметов и отслеживания игрового прогресса.
 
