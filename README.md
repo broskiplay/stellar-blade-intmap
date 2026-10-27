@@ -13,7 +13,7 @@
 | Эйдос 7 (Eidos 7) | [Открыть карту](eidos7.html) | [`!metki eidos-7 FINAL.json`](%21metki%20eidos-7%20FINAL.json) |
 | Ксион (Xion) | [Открыть карту](xion.html) | [`!metki XION FINAL.json`](%21metki%20XION%20FINAL.json) |
 | Пустошь (Wasteland) | [Открыть карту](wasteland.html) | [`!metki Wasteland FINAL.json`](%21metki%20Wasteland%20FINAL.json) |
-| Атлесс Левуар (Altess Levoire) | [Открыть карту](altess_levoire.html) | 82 метки встроены в HTML |
+| Атлесс Левуар (Altess Levoire) | [Открыть карту](altess_levoire.html) | [База меток JSON](stellar_blade_altess-levoire_markers.json) |
 
 На каждой карте доступны поиск по названию и описанию, фильтры по категориям, счётчик собранных меток, просмотр описания и отметка найденных предметов. Картографический интерфейс построен на Leaflet с простой системой координат и отдельным изображением для каждой локации.
 
