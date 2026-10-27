@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Интерактивные карты от BroskiPlay</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+body {
+    min-height: 100vh;
+    background: radial-gradient(circle at center, #1e2638 0%, #0f131d 100%);
+    color: #e0e6ed;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+}
+.home-title {
+    font-size: 32px; font-weight: 800; color: #50e3c2; text-transform: uppercase;
+    letter-spacing: 1.5px; text-align: center; margin-bottom: 10px;
+    text-shadow: 0 4px 20px rgba(80,227,194,.25);
+}
+.home-subtitle { font-size: 15px; color: #8a99ad; margin-bottom: 22px; text-align: center; }
+
+.social-links { display: flex; gap: 12px; align-items: center; justify-content: center; margin-bottom: 32px; }
+.social-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 700;
+    text-decoration: none; color: #fff; transition: transform .15s, filter .15s;
+    border: 1px solid rgba(255,255,255,.15);
+}
+.social-btn:hover { transform: translateY(-2px); filter: brightness(1.12); }
+.social-btn svg { width: 16px; height: 16px; fill: currentColor; }
+.social-twitch { background: #6441a5; border-color: #7d5bbe; }
+.social-youtube { background: #c4302b; border-color: #e0443e; }
+
+.games-container { width: 100%; max-width: 440px; }
+
+/* Карточка игры с выпадающим меню карт */
+details.game-dropdown {
+    background: linear-gradient(145deg, #212836, #171b24);
+    border: 1px solid #323c4e; border-radius: 14px; overflow: hidden;
+    box-shadow: 0 8px 25px rgba(0,0,0,.45); transition: border-color .25s;
+}
+details.game-dropdown:hover, details.game-dropdown[open] { border-color: #50e3c2; }
+details.game-dropdown > summary {
+    list-style: none; cursor: pointer; user-select: none;
+}
+details.game-dropdown > summary::-webkit-details-marker { display: none; }
+
+.game-banner {
+    height: 150px; background: linear-gradient(135deg, #162235, #0d131c);
+    position: relative; display: flex; align-items: center; justify-content: center;
+    border-bottom: 1px solid #2e3543; overflow: hidden;
+}
+.game-banner::before {
+    content: ""; position: absolute; inset: 0;
+    background: url('maps/eidos-7.png') center/cover no-repeat;
+    opacity: .35; transition: transform .4s ease;
+}
+details.game-dropdown:hover .game-banner::before { transform: scale(1.06); }
+.game-badge {
+    position: relative; z-index: 2; background: rgba(15,19,29,.88);
+    border: 1px solid #50e3c2; color: #50e3c2; padding: 6px 14px;
+    border-radius: 20px; font-weight: 700; font-size: 12px; letter-spacing: 1px; text-transform: uppercase;
+}
+.game-info {
+    padding: 16px 20px; display: flex; align-items: center; justify-content: space-between;
+}
+.game-title { font-size: 20px; font-weight: 700; color: #fff; }
+.game-arrow { font-size: 14px; color: #50e3c2; transition: transform .25s; }
+details.game-dropdown[open] .game-arrow { transform: rotate(180deg); }
+
+/* Выпадающий список отдельных HTML-карт */
+.maps-list {
+    padding: 12px 16px 16px; background: #141820; border-top: 1px solid #283040;
+    display: flex; flex-direction: column; gap: 8px;
+}
+.map-link {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 14px; background: #1f2633; border: 1px solid #2e3748;
+    border-radius: 8px; color: #e0e6ed; text-decoration: none; font-weight: 600;
+    font-size: 14px; transition: background .15s, border-color .15s, transform .1s;
+}
+.map-link:hover {
+    background: #283244; border-color: #50e3c2; color: #50e3c2; transform: translateX(4px);
+}
+.map-link span.status { font-size: 11px; color: #8a99ad; font-weight: normal; }
+</style>
+</head>
+<body>
+
+    <h1 class="home-title">Интерактивные карты от BroskiPlay</h1>
+    <p class="home-subtitle">Выберите игру и нужную локацию</p>
+
+    <div class="social-links">
+        <a href="https://www.twitch.tv/broski" target="_blank" rel="noopener noreferrer" class="social-btn social-twitch">
+            <svg viewBox="0 0 24 24"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z"/></svg>
+            <span>Twitch</span>
+        </a>
+        <a href="https://youtube.com/@broskiplayt" target="_blank" rel="noopener noreferrer" class="social-btn social-youtube">
+            <svg viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+            <span>YouTube</span>
+        </a>
+    </div>
+
+    <div class="games-container">
+        <details class="game-dropdown" open>
+            <summary>
+                <div class="game-banner">
+                    <span class="game-badge">Выбрать локацию</span>
+                </div>
+                <div class="game-info">
+                    <span class="game-title">Stellar Blade</span>
+                    <span class="game-arrow">▼</span>
+                </div>
+            </summary>
+            <div class="maps-list">
+                <a href="eidos7.html" class="map-link">
+                    <span>🗺 Эйдос 7 (Eidos 7)</span>
+                    <span class="status">Открыть ➔</span>
+                </a>
+                <a href="xion.html" class="map-link">
+                    <span>🗺 Ксион (Xion)</span>
+                    <span class="status">Открыть ➔</span>
+                </a>
+                <a href="wasteland.html" class="map-link">
+                    <span>🗺 Пустошь (Wasteland)</span>
+                    <span class="status">Открыть ➔</span>
+                </a>
+                <a href="matrix11.html" class="map-link">
+                    <span>🗺 Матрица 11 (Matrix 11)</span>
+                    <span class="status">Открыть ➔</span>
+                </a>
+                <a href="great_desert.html" class="map-link">
+                    <span>🗺 Великая пустыня (Great Desert)</span>
+                    <span class="status">Открыть ➔</span>
+                </a>
+                <a href="spire4.html" class="map-link">
+                    <span>🗺 Шпиль 4 (Spire 4)</span>
+                    <span class="status">Открыть ➔</span>
+                </a>
+                <a href="eidos9.html" class="map-link">
+                    <span>🗺 Эйдос 9 (Eidos 9)</span>
+                    <span class="status">Открыть ➔</span>
+                </a>
+            </div>
+        </details>
+    </div>
+
+</body>
+</html>
