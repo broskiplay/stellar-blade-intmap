@@ -87,7 +87,8 @@ details.game-dropdown:hover .game-banner-image { transform: scale(1.04); }
 .game-info {
     padding: 16px 20px; display: flex; align-items: center; justify-content: space-between;
 }
-.game-title { font-size: 20px; font-weight: 700; color: #fff; }
+.game-title { font-size: 20px; font-weight: 700; color: #fff; text-decoration: none; }
+.game-title:hover { color: #50e3c2; }
 .game-arrow { font-size: 14px; color: #50e3c2; transition: transform .25s; }
 details.game-dropdown[open] .game-arrow { transform: rotate(180deg); }
 
@@ -145,13 +146,13 @@ details.game-dropdown[open] .game-arrow { transform: rotate(180deg); }
     </div>
 
     <div class="games-container">
-        <details class="game-dropdown" open>
+        <details class="game-dropdown">
             <summary>
                 <div class="game-banner">
                     <img class="game-banner-image" src="maps/stellar-blade-logo.png" alt="Stellar Blade — выбрать локацию">
                 </div>
                 <div class="game-info">
-                    <span class="game-title">Stellar Blade</span>
+                    <a class="game-title" href="eidos7.html">Stellar Blade</a>
                     <span class="game-arrow">▼</span>
                 </div>
             </summary>
@@ -196,6 +197,15 @@ details.game-dropdown[open] .game-arrow { transform: rotate(180deg); }
         </details>
     </div>
 
+<script>
+const mapLinks = [...document.querySelectorAll(".map-link")];
+const gameTitleLink = document.querySelector(".game-title");
+const lastMap = localStorage.getItem("sb_last_map");
+
+if (mapLinks.some(link => link.getAttribute("href") === lastMap)) {
+    gameTitleLink.href = lastMap;
+}
+</script>
 <script>
 const firebaseConfig = {
     apiKey: "AIzaSyBZ29h18Z1k0gE4dAEca5JH8yePQgxhaII",

@@ -375,6 +375,7 @@ const CURRENT_MAP_CONFIG = {
     sourceWidth: 8192,
     sourceHeight: 8192
 };
+localStorage.setItem("sb_last_map", CURRENT_MAP_CONFIG.htmlFile);
 
 // Изолированные ключи памяти браузера ТОЛЬКО для этой карты (чтобы карты никогда не смешивались!)
 const STORAGE_KEY_MARKERS    = `sb_markers_${CURRENT_MAP_CONFIG.id}`;

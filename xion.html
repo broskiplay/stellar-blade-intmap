@@ -371,6 +371,7 @@ const CURRENT_MAP_CONFIG = {
     width: 9104,                         // Ширина файла карты
     height: 7028                         // Высота файла карты
 };
+localStorage.setItem("sb_last_map", CURRENT_MAP_CONFIG.htmlFile);
 
 // Изолированные ключи памяти для Ксиона
 const STORAGE_KEY_MARKERS    = `sb_markers_${CURRENT_MAP_CONFIG.id}`;
