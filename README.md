@@ -14,10 +14,13 @@
 | Ксион (Xion) | [Открыть карту](xion.html) | [`!metki XION FINAL.json`](%21metki%20XION%20FINAL.json) |
 | Пустошь (Wasteland) | [Открыть карту](wasteland.html) | [`!metki Wasteland FINAL.json`](%21metki%20Wasteland%20FINAL.json) |
 | Атлесс Левуар (Altess Levoire) | [Открыть карту](altess_levoire.html) | [База меток JSON](altess_levoire_data.json) |
+| Матрица 11 (Matrix 11) | [Открыть карту](matrix11.html) | [База меток JSON](stellar_blade_matrix-11_markers.json) |
+| Великая пустыня (Great Desert) | [Открыть карту](great_desert.html) | [База меток JSON](stellar_blade_great-desert_markers.json) |
+| Бездна Левуар (Abyss Levoire) | [Открыть карту](abyss_levoire.html) | [База меток JSON](stellar_blade_abyss-levoire_markers.json) |
+| Шпиль 4 (Spire 4) | [Открыть карту](spire4.html) | [База меток JSON](stellar_blade_spire-4_markers.json) |
+| Эйдос 9 (Eidos 9) | [Открыть карту](eidos9.html) | [База меток JSON](stellar_blade_eidos-9_markers.json) |
 
 На каждой карте доступны поиск по названию и описанию, фильтры по категориям, счётчик собранных меток, просмотр описания и отметка найденных предметов. Картографический интерфейс построен на Leaflet с простой системой координат и отдельным изображением для каждой локации.
-
-В меню также доступны заглушки Матрица 11 (Matrix 11), Великая пустыня (Great Desert), Бездна Левуар (Abyss Levoire), Шпиль 4 (Spire 4) и Эйдос 9 (Eidos 9). Интерактивные карты и базы меток для этих локаций пока не добавлены.
 
 ## Возможности
 
