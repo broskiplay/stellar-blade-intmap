@@ -206,8 +206,23 @@ body.ctrl-pressed .custom-pin { cursor:move !important; box-shadow:0 0 10px #50e
     .filter-item { min-height:42px; }
 }
 </style>
+<link rel="stylesheet" href="mobile-map.css">
+<script src="mobile-map.js" defer></script>
 </head>
 <body>
+
+<header class="mobile-map-header">
+    <div class="mobile-map-topbar">
+        <div class="mobile-map-logo"><span>SB</span><span>MAP</span></div>
+        <div class="mobile-map-actions">
+            <button type="button" class="mobile-maps-toggle" aria-expanded="false" aria-controls="mobile-map-nav">Maps</button>
+            <button type="button" data-mobile-action="filters" aria-label="Фильтры" title="Фильтры">☷</button>
+            <button type="button" data-mobile-action="profile" aria-label="Профиль" title="Профиль">♙</button>
+            <button type="button" data-mobile-action="search" aria-label="Поиск" title="Поиск">⌕</button>
+        </div>
+    </div>
+    <nav class="mobile-map-nav" id="mobile-map-nav" aria-label="Выбор локации"></nav>
+</header>
 
 <div id="sidebar">
     <div class="sidebar-header">
