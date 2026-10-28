@@ -10,9 +10,9 @@
 
 | Локация | Карта | База меток |
 | --- | --- | --- |
-| Эйдос 7 (Eidos 7) | [Открыть карту](eidos7.html) | [`!metki eidos-7 FINAL.json`](%21metki%20eidos-7%20FINAL.json) |
-| Ксион (Xion) | [Открыть карту](xion.html) | [`!metki XION FINAL.json`](%21metki%20XION%20FINAL.json) |
-| Пустошь (Wasteland) | [Открыть карту](wasteland.html) | [`!metki Wasteland FINAL.json`](%21metki%20Wasteland%20FINAL.json) |
+| Эйдос 7 (Eidos 7) | [Открыть карту](eidos7.html) | [База меток JSON](%21metki%20eidos-7%20FINAL.json) |
+| Ксион (Xion) | [Открыть карту](xion.html) | [База меток JSON](%21metki%20XION%20FINAL.json) |
+| Пустошь (Wasteland) | [Открыть карту](wasteland.html) | [База меток JSON](%21metki%20Wasteland%20FINAL.json) |
 | Атлесс Левуар (Altess Levoire) | [Открыть карту](altess_levoire.html) | [База меток JSON](altess_levoire_data.json) |
 | Матрица 11 (Matrix 11) | [Открыть карту](matrix11.html) | [База меток JSON](stellar_blade_matrix-11_markers.json) |
 | Великая пустыня (Great Desert) | [Открыть карту](great_desert.html) | [База меток JSON](stellar_blade_great-desert_markers.json) |
