@@ -22,6 +22,10 @@
         return db.collection("users").doc(user.uid).collection("mapProgress").doc(mapId);
     }
 
+    function customMarkersRef(user, mapId) {
+        return db.collection("users").doc(user.uid).collection("customMarkers").doc(mapId);
+    }
+
     function uniqueIds(ids) {
         const seen = new Set();
         return (Array.isArray(ids) ? ids : []).filter(id => {
@@ -54,7 +58,7 @@
                 return await ref.get({ source: "cache" });
             } catch (cacheError) {
                 if (!isOfflineError(cacheError) && cacheError?.code !== "not-found") throw cacheError;
-                const offlineError = new Error("Нет подключения к Google, и прогресс этой карты ещё не сохранён в локальном кэше. Он останется на устройстве и синхронизируется после восстановления сети.");
+                const offlineError = new Error("Нет подключения к Google, и данные этой карты ещё не сохранены в локальном кэше. Они останутся на устройстве и синхронизируются после восстановления сети.");
                 offlineError.code = "unavailable";
                 throw offlineError;
             }
@@ -156,6 +160,36 @@
         state.getLocalIds = getLocalIds;
         state.applyIds = applyIds;
         return synchronizeProgress(user, mapId, state, true);
+    };
+
+    window.syncUserMarkersToCloud = async function (mapId, localMarkers) {
+        const user = auth.currentUser;
+        if (!user) throw new Error("Войдите через Google, чтобы синхронизировать свои метки.");
+
+        const ref = customMarkersRef(user, mapId);
+        const snapshot = await readProgress(ref);
+        if (auth.currentUser?.uid !== user.uid) return [];
+
+        const cloudMarkers = snapshot.exists && Array.isArray(snapshot.data().markers)
+            ? snapshot.data().markers
+            : [];
+        const markersById = new Map(
+            cloudMarkers
+                .filter(marker => marker && marker.id != null)
+                .map(marker => [String(marker.id), marker])
+        );
+        for (const marker of localMarkers) {
+            if (marker && marker.id != null) markersById.set(String(marker.id), marker);
+        }
+
+        const markers = Array.from(markersById.values());
+        if (JSON.stringify(markers) !== JSON.stringify(cloudMarkers)) {
+            await ref.set({
+                markers,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+        }
+        return markers;
     };
 
     window.addEventListener("offline", () => {

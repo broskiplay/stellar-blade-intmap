@@ -9,6 +9,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 <script src="cloud-sync.js"></script>
+<script src="map-access.js"></script>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
@@ -260,11 +261,11 @@ body.ctrl-pressed .custom-pin { cursor:move !important; box-shadow:0 0 10px #50e
     </div>
 
     <div class="section">
-        <details class="submenu">
+        <button id="toggle-add-btn" onclick="toggleAddMode()" style="margin-bottom:6px;">+ Добавить свою метку на карту</button>
+        <details class="submenu owner-only" data-owner-only hidden>
             <summary>⚙️ Настройки и управление метками</summary>
             <div class="submenu-body">
-                <button id="toggle-add-btn" onclick="toggleAddMode()" style="margin-bottom:6px;">+ Добавить свою метку на карту</button>
-                <div class="panel-note">💡 Зажмите клавишу <b>Ctrl</b> и перетащите любую метку мышью, чтобы вручную настроить её местоположение.</div>
+                <div class="panel-note" data-owner-only hidden>💡 Зажмите клавишу <b>Ctrl</b> и перетащите любую метку мышью, чтобы вручную настроить её местоположение.</div>
 
                 <details class="nested-menu">
                     <summary>🔧 Подгонка и масштаб всех меток</summary>
@@ -376,6 +377,7 @@ localStorage.setItem("sb_last_map", CURRENT_MAP_CONFIG.htmlFile);
 const STORAGE_KEY_MARKERS    = `sb_markers_${CURRENT_MAP_CONFIG.id}`;
 const STORAGE_KEY_FOUND      = `sb_found_${CURRENT_MAP_CONFIG.id}`;
 const STORAGE_KEY_CHECKPOINT = `sb_checkpoint_${CURRENT_MAP_CONFIG.id}`;
+const userMarkersStorageKey = uid => `sb_user_markers_${CURRENT_MAP_CONFIG.id}_${uid}`;
 
 const CATEGORIES = {
     camp:{name:"Лагерь (Camp)",iconClass:"icon-camp",color:"#27ae60"},
@@ -425,6 +427,9 @@ let mapInstance = null;
 let imageOverlay = null;
 const markersLayer = L.layerGroup();
 let markersData = loadJSON(STORAGE_KEY_MARKERS, []);
+let markersLoaded = false;
+let activeCustomMarkerUid = null;
+let syncingCustomMarkers = false;
 let foundIds = loadJSON(STORAGE_KEY_FOUND, []);
 let activeCategories = Object.keys(CATEGORIES).reduce((acc,key)=>({...acc,[key]:true}),{});
 let hideFoundMarkers = false;
@@ -537,9 +542,13 @@ async function loadPreboundMarkers() {
 }
 
 async function reloadDefaultMarkersFromFile() {
+    if (!window.isMapOwner()) return;
     if (!confirm("Перезагрузить все метки из исходного файла карты?")) return;
     localStorage.removeItem(STORAGE_KEY_MARKERS);
     await loadPreboundMarkers();
+    markersLoaded = true;
+    activeCustomMarkerUid = null;
+    await activateCustomMarkersForUser(auth.currentUser).catch(reportCustomMarkerSyncError);
     renderMarkers();
     renderFilters();
     showStatus("✅ Метки перезагружены из файла карты!");
@@ -566,6 +575,10 @@ auth.onAuthStateChanged(user => {
         btnEl.style.background = "";
         avatarEl.style.display = "none";
     }
+});
+
+window.addEventListener("map-auth-state-changed", event => {
+    if (markersLoaded) activateCustomMarkersForUser(event.detail.user).catch(reportCustomMarkerSyncError);
 });
 
 function toggleGoogleAuth() {
@@ -631,6 +644,8 @@ async function initMap() {
         if (addMode) openCreateMarkerPopup(e.latlng.lat,e.latlng.lng);
     });
     await loadPreboundMarkers();
+    markersLoaded = true;
+    await activateCustomMarkersForUser(auth.currentUser).catch(reportCustomMarkerSyncError);
     loadCurrentMapImage();
     window.connectMapProgressSync(CURRENT_MAP_CONFIG.id, () => foundIds, ids => {
         foundIds = normalizeFoundIds(ids);
@@ -646,6 +661,7 @@ async function initMap() {
     // Автосохранение в кэш каждые 3 минуты
     setInterval(autoSaveToBrowserCache, 3 * 60 * 1000);
     setInterval(saveProgressToCloud, 5 * 1000);
+    setInterval(() => syncCustomMarkersWithGoogle().catch(reportCustomMarkerSyncError), 30 * 1000);
 }
 
 function autoSaveToBrowserCache() {
@@ -732,7 +748,7 @@ function renderMarkers() {
             ${imgHtml}
             <div class="popup-actions">
                 <button class="btn-found" onclick="toggleFound(${JSON.stringify(marker.id)})">${isFound?"✖ Снять отметку":"✔ Найдено!"}</button>
-                <button class="btn-delete" onclick="deleteMarker(${JSON.stringify(marker.id)})" title="Удалить метку">🗑</button>
+                ${window.isMapOwner() && marker.imported?`<button class="btn-delete" onclick="deleteMarker(${JSON.stringify(marker.id)})" title="Удалить метку">🗑</button>`:""}
             </div>
         </div>`;
 
@@ -745,7 +761,7 @@ function renderMarkers() {
 
         lMarker.on("mousedown", function(e) {
             const orig = e.originalEvent;
-            if (!orig || !orig.ctrlKey || orig.button !== 0) return;
+            if (!window.isMapOwner() || !orig || !orig.ctrlKey || orig.button !== 0) return;
 
             L.DomEvent.stopPropagation(e);
             L.DomEvent.preventDefault(e);
@@ -800,6 +816,7 @@ function renderFilters() {
 }
 
 function shiftAllMarkers(dx,dy) {
+    if (!window.isMapOwner()) return;
     markersData.forEach(m=>{
         m.lng=Number((m.lng+dx).toFixed(2));
         m.lat=Number((m.lat+dy).toFixed(2));
@@ -808,6 +825,7 @@ function shiftAllMarkers(dx,dy) {
 }
 
 function scaleMarkersAxis(factorX,factorY) {
+    if (!window.isMapOwner()) return;
     if(!markersData.length) return;
     const minLat=Math.min(...markersData.map(m=>m.lat));
     const minLng=Math.min(...markersData.map(m=>m.lng));
@@ -840,6 +858,8 @@ function toggleFound(id) {
     renderMarkers();renderFilters();
 }
 function deleteMarker(id) {
+    if (!window.isMapOwner()) return;
+    if (!markersData.some(marker => marker.id === id && marker.imported)) return;
     if(!confirm("Удалить эту метку?")) return;
     markersData=markersData.filter(m=>m.id!==id);
     foundIds=foundIds.filter(x=>x!==id);
@@ -866,7 +886,8 @@ function saveNewMarker(lat,lng) {
     const category=document.getElementById("new-cat").value;
     const title=document.getElementById("new-title").value.trim()||CATEGORIES[category].name;
     const desc=document.getElementById("new-desc").value.trim();
-    markersData.push({id:makeUniqueId(),map:CURRENT_MAP_CONFIG.id,lat:Number(lat.toFixed(2)),lng:Number(lng.toFixed(2)),category,title,desc,imported:false});
+    const isOwner = window.isMapOwner();
+    markersData.push({id:makeUniqueId(),map:CURRENT_MAP_CONFIG.id,lat:Number(lat.toFixed(2)),lng:Number(lng.toFixed(2)),category,title,desc,imported:isOwner,...(isOwner?{}:{ownerUid:auth.currentUser?.uid || "guest"})});
     saveMarkers();mapInstance.closePopup();renderMarkers();renderFilters();
 }
 function makeUniqueId() {
@@ -875,6 +896,59 @@ function makeUniqueId() {
 }
 function saveMarkers() {
     localStorage.setItem(STORAGE_KEY_MARKERS,JSON.stringify(markersData));
+    const uid = auth.currentUser?.uid || "guest";
+    localStorage.setItem(userMarkersStorageKey(uid), JSON.stringify(
+        markersData.filter(marker => !marker.imported && marker.ownerUid === uid)
+    ));
+    if (auth.currentUser && markersLoaded && !syncingCustomMarkers) {
+        syncCustomMarkersWithGoogle().catch(reportCustomMarkerSyncError);
+    }
+}
+
+async function activateCustomMarkersForUser(user) {
+    const uid = user?.uid || "guest";
+    if (activeCustomMarkerUid === uid) return;
+    const currentCustomMarkers = markersData.filter(marker => !marker.imported);
+    const savedMarkers = loadJSON(userMarkersStorageKey(uid), null);
+    const selectedMarkers = Array.isArray(savedMarkers)
+        ? savedMarkers
+        : currentCustomMarkers.filter(marker => !marker.ownerUid || marker.ownerUid === "guest" || marker.ownerUid === uid);
+    const ownMarkers = sanitizeMarkersList(selectedMarkers)
+        .filter(marker => !marker.ownerUid || marker.ownerUid === "guest" || marker.ownerUid === uid)
+        .map(marker => ({ ...marker, imported: false, ownerUid: uid }));
+    markersData = markersData.filter(marker => marker.imported).concat(ownMarkers);
+    activeCustomMarkerUid = uid;
+    localStorage.setItem(STORAGE_KEY_MARKERS, JSON.stringify(markersData));
+    localStorage.setItem(userMarkersStorageKey(uid), JSON.stringify(ownMarkers));
+    renderMarkers();
+    renderFilters();
+    if (user) await syncCustomMarkersWithGoogle();
+}
+
+async function syncCustomMarkersWithGoogle() {
+    const user = auth.currentUser;
+    if (!user || !markersLoaded || syncingCustomMarkers) return;
+    syncingCustomMarkers = true;
+    try {
+        const localMarkers = markersData.filter(marker => !marker.imported && marker.ownerUid === user.uid);
+        const syncedMarkers = await window.syncUserMarkersToCloud(CURRENT_MAP_CONFIG.id, localMarkers);
+        if (auth.currentUser?.uid !== user.uid) return;
+        const ownMarkers = sanitizeMarkersList(syncedMarkers)
+            .map(marker => ({ ...marker, imported: false, ownerUid: user.uid }));
+        markersData = markersData.filter(marker => marker.imported).concat(ownMarkers);
+        localStorage.setItem(STORAGE_KEY_MARKERS, JSON.stringify(markersData));
+        localStorage.setItem(userMarkersStorageKey(user.uid), JSON.stringify(ownMarkers));
+        renderMarkers();
+        renderFilters();
+        setCloudSyncStatus(`Личные метки синхронизированы: ${ownMarkers.length}.`);
+    } finally {
+        syncingCustomMarkers = false;
+    }
+}
+
+function reportCustomMarkerSyncError(error) {
+    console.error("Не удалось синхронизировать личные метки с Google:", error);
+    setCloudSyncStatus(`Ошибка синхронизации личных меток: ${error.message || "проверьте вход и подключение"}`);
 }
 
 async function saveJsonWithDialog(dataObj, suggestedName) {
@@ -905,11 +979,13 @@ async function saveJsonWithDialog(dataObj, suggestedName) {
 }
 
 function exportData() {
-    saveJsonWithDialog({markers:markersData,found:foundIds}, `stellar_blade_${CURRENT_MAP_CONFIG.id}_data.json`);
+    if (!window.isMapOwner()) return;
+    saveJsonWithDialog({markers:markersData.filter(marker => marker.imported)}, CURRENT_MAP_CONFIG.markersFile);
 }
 
 // ИСПРАВЛЕННЫЙ ИМПОРТ: Все импортируемые метки принудительно привязываются к текущей открытой HTML-карте!
 function importData(event) {
+    if (!window.isMapOwner()) return;
     const file=event.target.files && event.target.files[0];
     if(!file) return;
     const reader=new FileReader();
@@ -1053,6 +1129,7 @@ function getShiftStep() {
     return value;
 }
 function shiftImported(dx,dy) {
+    if (!window.isMapOwner()) return;
     const step=getShiftStep();if(step===null)return;
     const list=markersData.filter(m=>m.imported);
     if(!list.length){alert("На этой локации нет импортированных меток.");return;}
@@ -1063,6 +1140,7 @@ function shiftImported(dx,dy) {
     saveMarkers();renderMarkers();
 }
 function mirrorImportedX() {
+    if (!window.isMapOwner()) return;
     const cfg=CURRENT_MAP_CONFIG;
     const list=markersData.filter(m=>m.imported);
     if(!list.length){alert("Нет импортированных меток для отражения.");return;}
@@ -1070,6 +1148,7 @@ function mirrorImportedX() {
     saveMarkers();renderMarkers();
 }
 function mirrorImportedY() {
+    if (!window.isMapOwner()) return;
     const cfg=CURRENT_MAP_CONFIG;
     const list=markersData.filter(m=>m.imported);
     if(!list.length){alert("Нет импортированных меток для отражения.");return;}
@@ -1077,12 +1156,14 @@ function mirrorImportedY() {
     saveMarkers();renderMarkers();
 }
 function resetImportedTransforms() {
+    if (!window.isMapOwner()) return;
     const list=markersData.filter(m=>m.imported && Number.isFinite(m._importBaseLat) && Number.isFinite(m._importBaseLng));
     if(!list.length){alert("Нет исходных координат для сброса.");return;}
     list.forEach(m=>{m.lat=m._importBaseLat;m.lng=m._importBaseLng;});
     saveMarkers();renderMarkers();
 }
 function deleteImportedMarkers() {
+    if (!window.isMapOwner()) return;
     const list=markersData.filter(m=>m.imported);
     if(!list.length){alert("На этой локации нет импортированных меток.");return;}
     if(!confirm(`Удалить ${list.length} импортированных меток с этой карты?`))return;
